@@ -1,6 +1,8 @@
+import csv
 import json
 import math
 import time
+from datetime import datetime
 from pathlib import Path
 
 from smbus import SMBus
@@ -9,6 +11,7 @@ SENSOR = 0x1E
 LCD = "/dev/ttyACM0"
 CALIBRATION_SECONDS = 30
 CALIBRATION_FILE = Path(__file__).with_name("compass_calibration.json")
+CALIBRATION_LOG_FILE = Path(__file__).with_name("compass_calibration.csv")
 
 bus = SMBus(1)
 bus.write_byte_data(SENSOR, 0x00, 0x14)  # 30 Hz
@@ -43,8 +46,13 @@ def show_lines(line1, line2):
 
 minimum = {"x": math.inf, "y": math.inf, "z": math.inf}
 maximum = {"x": -math.inf, "y": -math.inf, "z": -math.inf}
+log = CALIBRATION_LOG_FILE.open("w", newline="", encoding="utf-8")
+writer = csv.writer(log)
+writer.writerow(["timestamp", "elapsed_s", "raw_x", "raw_y", "raw_z"])
+log.flush()
 started = time.monotonic()
 
+print(f"Calibration log reset: {CALIBRATION_LOG_FILE}")
 print("Slowly rotate the IMU in every direction for 30 seconds.")
 
 try:
@@ -58,6 +66,17 @@ try:
         # -4096 indicates an overflow reading from this magnetometer.
         if -4096 in (x, y, z):
             continue
+
+        writer.writerow(
+            [
+                datetime.now().isoformat(timespec="milliseconds"),
+                f"{elapsed:.3f}",
+                x,
+                y,
+                z,
+            ]
+        )
+        log.flush()
 
         for axis, value in (("x", x), ("y", y), ("z", z)):
             minimum[axis] = min(minimum[axis], value)
@@ -111,4 +130,5 @@ except KeyboardInterrupt:
     print("\nCalibration cancelled")
 
 finally:
+    log.close()
     display.close()

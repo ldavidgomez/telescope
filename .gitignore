@@ -3,5 +3,7 @@ __pycache__/
 .venv/
 .vscode/
 .DS_Store
+.~
 compass_calibration.json
+compass_calibration.csv
 compass_test.csv
