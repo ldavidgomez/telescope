@@ -9,6 +9,8 @@
     "altitude_source": "pitch",
     "altitude_sign": 1.0,
     "altitude_offset_deg": 0.0,
-    "azimuth_offset_deg": 0.0
+    "azimuth_offset_deg": 0.0,
+    "smoothing_time_constant_s": 1.0,
+    "deadband_deg": 0.3
   }
 }

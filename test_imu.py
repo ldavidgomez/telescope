@@ -1,9 +1,36 @@
 import unittest
 
-from imu import Orientation, calculate_orientation, map_telescope_position
+from imu import (
+    Orientation,
+    PositionSmoother,
+    calculate_orientation,
+    map_telescope_position,
+)
 
 
 class ImuTest(unittest.TestCase):
+    def test_position_smoothing_wraps_around_north(self):
+        smoother = PositionSmoother(
+            time_constant_seconds=1.0,
+            deadband_degrees=0.0,
+        )
+        self.assertEqual(smoother.update(350.0, 0.0, now=0.0), (350.0, 0.0))
+
+        azimuth, altitude = smoother.update(10.0, 10.0, now=1.0)
+        self.assertAlmostEqual(azimuth, 2.6424, places=4)
+        self.assertAlmostEqual(altitude, 6.3212, places=4)
+
+    def test_position_smoothing_deadband(self):
+        smoother = PositionSmoother(
+            time_constant_seconds=0.0,
+            deadband_degrees=0.3,
+        )
+        smoother.update(100.0, 20.0, now=0.0)
+        self.assertEqual(
+            smoother.update(100.2, 19.8, now=1.0),
+            (100.0, 20.0),
+        )
+
     def test_level_orientation(self):
         orientation = calculate_orientation(1.0, 0.0, 0.0, 0, 0, 1000)
         self.assertAlmostEqual(orientation.heading, 0.0)

@@ -1,5 +1,6 @@
 import json
 import math
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -77,11 +78,59 @@ def map_telescope_position(orientation, settings):
     return azimuth, max(-90.0, min(90.0, altitude))
 
 
+class PositionSmoother:
+    def __init__(self, time_constant_seconds=1.0, deadband_degrees=0.3):
+        if time_constant_seconds < 0:
+            raise ValueError("Smoothing time constant cannot be negative.")
+        if deadband_degrees < 0:
+            raise ValueError("Smoothing deadband cannot be negative.")
+
+        self.time_constant = time_constant_seconds
+        self.deadband = deadband_degrees
+        self.azimuth = None
+        self.altitude = None
+        self.last_update = None
+
+    def update(self, azimuth, altitude, now=None):
+        if now is None:
+            now = time.monotonic()
+
+        if self.last_update is None:
+            self.azimuth = azimuth % 360.0
+            self.altitude = altitude
+            self.last_update = now
+            return self.azimuth, self.altitude
+
+        elapsed = max(0.0, now - self.last_update)
+        self.last_update = now
+        alpha = (
+            1.0
+            if self.time_constant == 0
+            else 1.0 - math.exp(-elapsed / self.time_constant)
+        )
+
+        azimuth_delta = (azimuth - self.azimuth + 180.0) % 360.0 - 180.0
+        altitude_delta = altitude - self.altitude
+
+        if abs(azimuth_delta) > self.deadband:
+            self.azimuth = (self.azimuth + alpha * azimuth_delta) % 360.0
+        if abs(altitude_delta) > self.deadband:
+            self.altitude += alpha * altitude_delta
+
+        return self.azimuth, self.altitude
+
+
 class TelescopeImu:
     def __init__(self, calibration_file, settings, bus_number=1):
         from smbus import SMBus
 
         self.settings = settings
+        self.smoother = PositionSmoother(
+            time_constant_seconds=float(
+                settings.get("smoothing_time_constant_s", 1.0)
+            ),
+            deadband_degrees=float(settings.get("deadband_deg", 0.3)),
+        )
         self.calibration = json.loads(
             Path(calibration_file).read_text(encoding="utf-8")
         )
@@ -134,4 +183,5 @@ class TelescopeImu:
             orientation,
             self.settings,
         )
+        azimuth, altitude = self.smoother.update(azimuth, altitude)
         return azimuth, altitude, orientation
