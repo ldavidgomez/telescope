@@ -1,0 +1,14 @@
+{
+  "observer": {
+    "latitude_deg": 0.0,
+    "longitude_deg": 0.0,
+    "altitude_m": 0
+  },
+  "imu": {
+    "calibration_file": "compass_calibration.json",
+    "altitude_source": "pitch",
+    "altitude_sign": 1.0,
+    "altitude_offset_deg": 0.0,
+    "azimuth_offset_deg": 0.0
+  }
+}
