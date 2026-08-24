@@ -62,7 +62,7 @@ try:
         time.sleep(0.25)
 
 except KeyboardInterrupt:
-    show_lines("Telescope", "Prueba detenida")
+    show_lines("Telescope", "Test stopped")
     print()
 
 finally:

@@ -7,13 +7,15 @@ RSYNC_EXCLUDES = \
 	--exclude=.venv/ \
 	--exclude=__pycache__/ \
 	--exclude='*.pyc' \
+	--exclude=compass_calibration.json \
+	--exclude=compass_test.csv \
 	--exclude=.DS_Store
 
 .PHONY: help deploy ssh
 
 help:
-	@echo "make deploy   Copia el proyecto a la Raspberry"
-	@echo "make ssh      Abre una sesión SSH"
+	@echo "make deploy   Copy the project to the Raspberry Pi"
+	@echo "make ssh      Open an SSH session"
 
 deploy:
 	rsync -av $(RSYNC_EXCLUDES) ./ $(PI_USER)@$(PI_HOST):$(PI_DIR)/

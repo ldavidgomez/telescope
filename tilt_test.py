@@ -5,10 +5,10 @@ from smbus import SMBus
 ADDRESS = 0x19
 bus = SMBus(1)
 
-# 10 Hz, ejes X/Y/Z activos
+# 10 Hz with the X/Y/Z axes enabled
 bus.write_byte_data(ADDRESS, 0x20, 0x27)
 
-# Alta resolución, rango ±2 g
+# High-resolution mode, ±2 g range
 bus.write_byte_data(ADDRESS, 0x23, 0x88)
 
 
