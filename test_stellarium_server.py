@@ -1,7 +1,7 @@
 import struct
 import unittest
 
-from stellarium_server import (
+from stellarium_protocol import (
     POSITION_MESSAGE_LENGTH,
     current_position_message,
     decode_dec,
@@ -9,8 +9,8 @@ from stellarium_server import (
     decode_ra,
     encode_dec,
     encode_ra,
-    shortest_angle,
 )
+from stellarium_server import shortest_angle
 
 
 class StellariumProtocolTest(unittest.TestCase):

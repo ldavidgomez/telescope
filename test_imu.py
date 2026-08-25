@@ -3,12 +3,40 @@ import unittest
 from imu import (
     Orientation,
     PositionSmoother,
+    apply_calibration,
+    calibration_from_extrema,
     calculate_orientation,
     map_telescope_position,
 )
 
 
 class ImuTest(unittest.TestCase):
+    def test_calibration_from_extrema(self):
+        calibration = calibration_from_extrema(
+            {"x": -10, "y": -20, "z": -30},
+            {"x": 10, "y": 20, "z": 30},
+        )
+        self.assertEqual(calibration["x_offset"], 0.0)
+        self.assertEqual(calibration["y_offset"], 0.0)
+        self.assertEqual(calibration["z_offset"], 0.0)
+        self.assertAlmostEqual(calibration["x_scale"], 2.0)
+        self.assertAlmostEqual(calibration["y_scale"], 1.0)
+        self.assertAlmostEqual(calibration["z_scale"], 2.0 / 3.0)
+
+    def test_apply_calibration(self):
+        calibration = {
+            "x_offset": 10.0,
+            "y_offset": -10.0,
+            "z_offset": 5.0,
+            "x_scale": 2.0,
+            "y_scale": 0.5,
+            "z_scale": 1.0,
+        }
+        self.assertEqual(
+            apply_calibration((15, 10, -5), calibration),
+            (10.0, 10.0, -10.0),
+        )
+
     def test_position_smoothing_wraps_around_north(self):
         smoother = PositionSmoother(
             time_constant_seconds=1.0,

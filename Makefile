@@ -17,7 +17,7 @@ RSYNC_EXCLUDES = \
 
 .PHONY: help deploy deploy-config ssh stellarium test \
 	service-install service-update service-restart service-stop \
-	service-status service-logs
+	service-status service-logs calibrate compass-test
 
 help:
 	@echo "make deploy   Copy the project to the Raspberry Pi"
@@ -30,6 +30,8 @@ help:
 	@echo "make service-stop  Stop the automatic service"
 	@echo "make service-status  Show the automatic service status"
 	@echo "make service-logs  Follow the automatic service logs"
+	@echo "make calibrate  Stop the service and calibrate the compass"
+	@echo "make compass-test  Stop the service and run the compass test"
 	@echo "make test     Run the local automated tests"
 
 deploy:
@@ -47,7 +49,8 @@ stellarium:
 service-install: deploy
 	ssh -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/telescope.service /etc/systemd/system/telescope.service && sudo systemctl daemon-reload && sudo systemctl enable --now telescope.service'
 
-service-update: deploy service-restart
+service-update: deploy
+	ssh -t $(PI_USER)@$(PI_HOST) 'sudo systemctl restart telescope.service'
 
 service-restart:
 	ssh -t $(PI_USER)@$(PI_HOST) 'sudo systemctl restart telescope.service'
@@ -56,10 +59,16 @@ service-stop:
 	ssh -t $(PI_USER)@$(PI_HOST) 'sudo systemctl stop telescope.service'
 
 service-status:
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo systemctl status --no-pager telescope.service'
+	ssh -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope.service'
 
 service-logs:
 	ssh -t $(PI_USER)@$(PI_HOST) 'sudo journalctl -u telescope.service -f'
+
+calibrate:
+	ssh -t $(PI_USER)@$(PI_HOST) 'set -e; sudo systemctl stop telescope.service; trap "sudo systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 calibrate_compass.py'
+
+compass-test:
+	ssh -t $(PI_USER)@$(PI_HOST) 'set -e; sudo systemctl stop telescope.service; trap "sudo systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 compass_test.py'
 
 test:
 	python3 -m unittest discover -v

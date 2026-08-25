@@ -1,5 +1,5 @@
 import argparse
-import json
+import logging
 import socket
 import socketserver
 import struct
@@ -8,111 +8,27 @@ import time
 from pathlib import Path
 
 from astronomy import horizontal_to_j2000, j2000_to_horizontal
+from configuration import load_config
+from display import DEFAULT_LCD_DEVICE, LcdDisplay
 from imu import TelescopeImu
+from stellarium_protocol import (
+    current_position_message,
+    decode_goto_message,
+)
 
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 10001
 DEFAULT_INTERVAL_SECONDS = 0.5
 DEFAULT_CONFIG_FILE = Path(__file__).with_name("telescope_config.json")
-DEFAULT_LCD = "/dev/ttyACM0"
+LOGGER = logging.getLogger(__name__)
 
 # Vega (J2000) provides an easy object to search for during the connection test.
 DEFAULT_RA_DEGREES = 279.23473479
 DEFAULT_DEC_DEGREES = 38.78368896
 
-POSITION_MESSAGE = 0
-POSITION_MESSAGE_LENGTH = 24
-GOTO_MESSAGE_LENGTH = 20
-FULL_CIRCLE = 1 << 32
-QUARTER_CIRCLE = 1 << 30
-
-
-def encode_ra(ra_degrees):
-    return round((ra_degrees % 360.0) / 360.0 * FULL_CIRCLE) % FULL_CIRCLE
-
-
-def encode_dec(dec_degrees):
-    dec_degrees = max(-90.0, min(90.0, dec_degrees))
-    return round(dec_degrees / 90.0 * QUARTER_CIRCLE)
-
-
-def decode_ra(encoded_ra):
-    return encoded_ra / FULL_CIRCLE * 360.0
-
-
-def decode_dec(encoded_dec):
-    return encoded_dec / QUARTER_CIRCLE * 90.0
-
-
-def current_position_message(ra_degrees, dec_degrees, timestamp_us=None):
-    if timestamp_us is None:
-        timestamp_us = time.time_ns() // 1_000
-
-    return struct.pack(
-        "<HHQIii",
-        POSITION_MESSAGE_LENGTH,
-        POSITION_MESSAGE,
-        timestamp_us,
-        encode_ra(ra_degrees),
-        encode_dec(dec_degrees),
-        0,
-    )
-
-
-def decode_goto_message(message):
-    if len(message) != GOTO_MESSAGE_LENGTH:
-        return None
-
-    length, message_type, _, encoded_ra, encoded_dec = struct.unpack(
-        "<HHQIi", message
-    )
-    if length != GOTO_MESSAGE_LENGTH or message_type != POSITION_MESSAGE:
-        return None
-
-    return decode_ra(encoded_ra), decode_dec(encoded_dec)
-
-
-def load_config(config_file):
-    config = json.loads(Path(config_file).read_text(encoding="utf-8"))
-    observer = config["observer"]
-    latitude = float(observer["latitude_deg"])
-    longitude = float(observer["longitude_deg"])
-
-    if not -90.0 <= latitude <= 90.0:
-        raise ValueError("Observer latitude must be between -90 and +90 degrees.")
-    if not -180.0 <= longitude <= 180.0:
-        raise ValueError(
-            "Observer longitude must be between -180 and +180 degrees."
-        )
-    return config, (latitude, longitude)
-
-
 def shortest_angle(target_degrees, current_degrees):
     return (target_degrees - current_degrees + 180.0) % 360.0 - 180.0
-
-
-class LcdDisplay:
-    def __init__(self, device):
-        self.stream = None
-        if device:
-            try:
-                self.stream = open(device, "wb", buffering=0)
-                time.sleep(2)
-            except OSError as error:
-                print(f"LCD unavailable: {error}", flush=True)
-
-    def show(self, line1, line2):
-        if self.stream is None:
-            return
-        self.stream.write(b"\xFE\x47\x01\x01")
-        self.stream.write(line1[:16].ljust(16).encode("ascii"))
-        self.stream.write(b"\xFE\x47\x01\x02")
-        self.stream.write(line2[:16].ljust(16).encode("ascii"))
-
-    def close(self):
-        if self.stream is not None:
-            self.stream.close()
 
 
 class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -142,10 +58,21 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self.last_display_update = 0.0
         self.print_lock = threading.Lock()
         self.target_lock = threading.Lock()
+        self.position_lock = threading.Lock()
+        self.fatal_error = None
 
     def log(self, message):
         with self.print_lock:
-            print(message, flush=True)
+            LOGGER.info(message)
+
+    def report_hardware_failure(self, error):
+        with self.print_lock:
+            if self.fatal_error is not None:
+                return
+            self.fatal_error = error
+            LOGGER.error("IMU read failed; stopping the server: %s", error)
+        # BaseServer.shutdown() must run outside the serve_forever thread.
+        threading.Thread(target=self.shutdown, daemon=True).start()
 
     def set_target(self, ra_degrees, dec_degrees):
         with self.target_lock:
@@ -154,22 +81,23 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self.update_display(force=True)
 
     def read_current_position(self):
-        if self.position_provider is None:
-            azimuth, altitude = j2000_to_horizontal(
-                self.ra_degrees,
-                self.dec_degrees,
+        with self.position_lock:
+            if self.position_provider is None:
+                azimuth, altitude = j2000_to_horizontal(
+                    self.ra_degrees,
+                    self.dec_degrees,
+                    *self.observer,
+                )
+                self.current_horizontal = (azimuth, altitude)
+                return self.ra_degrees, self.dec_degrees
+
+            azimuth, altitude, _ = self.position_provider.read_position()
+            self.current_horizontal = (azimuth, altitude)
+            return horizontal_to_j2000(
+                azimuth,
+                altitude,
                 *self.observer,
             )
-            self.current_horizontal = (azimuth, altitude)
-            return self.ra_degrees, self.dec_degrees
-
-        azimuth, altitude, _ = self.position_provider.read_position()
-        self.current_horizontal = (azimuth, altitude)
-        return horizontal_to_j2000(
-            azimuth,
-            altitude,
-            *self.observer,
-        )
 
     def update_display(self, force=False):
         now = time.monotonic()
@@ -212,7 +140,13 @@ class TelescopeRequestHandler(socketserver.BaseRequestHandler):
         while True:
             now = time.monotonic()
             if now >= next_send:
-                ra_degrees, dec_degrees = self.server.read_current_position()
+                try:
+                    ra_degrees, dec_degrees = (
+                        self.server.read_current_position()
+                    )
+                except (OSError, ValueError, KeyError) as error:
+                    self.server.report_hardware_failure(error)
+                    break
                 message = current_position_message(
                     ra_degrees,
                     dec_degrees,
@@ -280,7 +214,7 @@ def parse_arguments():
     parser.add_argument("--ra-deg", type=float, default=DEFAULT_RA_DEGREES)
     parser.add_argument("--dec-deg", type=float, default=DEFAULT_DEC_DEGREES)
     parser.add_argument("--config", default=str(DEFAULT_CONFIG_FILE))
-    parser.add_argument("--lcd", default=DEFAULT_LCD)
+    parser.add_argument("--lcd", default=DEFAULT_LCD_DEVICE)
     parser.add_argument(
         "--fixed-position",
         action="store_true",
@@ -296,25 +230,32 @@ def parse_arguments():
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     args = parse_arguments()
     if not -90.0 <= args.dec_deg <= 90.0:
         raise SystemExit("Declination must be between -90 and +90 degrees.")
     if args.interval <= 0:
         raise SystemExit("The update interval must be greater than zero.")
 
-    config, observer = load_config(args.config)
+    config = load_config(args.config)
+    observer = config.observer.coordinates
     display = LcdDisplay(args.lcd)
     display.show("Stellarium", "Starting IMU")
 
     position_provider = None
-    if not args.fixed_position:
-        imu_settings = config["imu"]
-        calibration_file = Path(args.config).parent / imu_settings.get(
-            "calibration_file", "compass_calibration.json"
-        )
-        position_provider = TelescopeImu(calibration_file, imu_settings)
-
     try:
+        if not args.fixed_position:
+            imu_settings = config.imu
+            calibration_file = Path(args.config).parent / imu_settings.get(
+                "calibration_file", "compass_calibration.json"
+            )
+            position_provider = TelescopeImu(calibration_file, imu_settings)
+            # Fail at startup instead of accepting clients with a broken IMU.
+            position_provider.read_position()
+
         with TelescopeServer(
             (args.host, args.port),
             TelescopeRequestHandler,
@@ -326,18 +267,25 @@ def main():
             position_provider,
         ) as server:
             position_mode = "fixed test position" if args.fixed_position else "IMU"
-            print(
-                f"Stellarium telescope server listening on port {args.port}.\n"
-                f"Position source: {position_mode}.\n"
-                f"Observer: {observer[0]:+.4f} deg, {observer[1]:+.4f} deg.\n"
-                "Press Ctrl+C to stop.",
-                flush=True,
+            LOGGER.info(
+                "Stellarium telescope server listening on port %d.",
+                args.port,
+            )
+            LOGGER.info("Position source: %s.", position_mode)
+            LOGGER.info(
+                "Observer: %+.4f deg, %+.4f deg.",
+                observer[0],
+                observer[1],
             )
             try:
                 server.serve_forever(poll_interval=0.2)
             except KeyboardInterrupt:
-                print("\nServer stopped.")
+                LOGGER.info("Server stopped.")
+            if server.fatal_error is not None:
+                raise RuntimeError("The IMU became unavailable") from server.fatal_error
     finally:
+        if position_provider is not None:
+            position_provider.close()
         display.close()
 
 

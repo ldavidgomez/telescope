@@ -7,6 +7,11 @@ from pathlib import Path
 
 ACCELEROMETER = 0x19
 MAGNETOMETER = 0x1E
+CALIBRATION_KEYS = tuple(
+    f"{axis}_{suffix}"
+    for axis in "xyz"
+    for suffix in ("offset", "scale")
+)
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,119 @@ def signed_accelerometer_axis(data, position):
     if value & 0x8000:
         value -= 65536
     return value >> 4
+
+
+def load_calibration(calibration_file):
+    calibration = json.loads(
+        Path(calibration_file).read_text(encoding="utf-8")
+    )
+    # Upgrade calibration files produced by the first prototype version.
+    if "z_offset" not in calibration and all(
+        key in calibration for key in ("minimum", "maximum")
+    ):
+        upgraded = calibration_from_extrema(
+            calibration["minimum"],
+            calibration["maximum"],
+        )
+        calibration.update(
+            {
+                "z_offset": upgraded["z_offset"],
+                "z_scale": upgraded["z_scale"],
+            }
+        )
+    missing = [key for key in CALIBRATION_KEYS if key not in calibration]
+    if missing:
+        raise ValueError(
+            "Compass calibration is missing: " + ", ".join(missing)
+        )
+    return calibration
+
+
+def apply_calibration(values, calibration):
+    return tuple(
+        (value - float(calibration[f"{axis}_offset"]))
+        * float(calibration[f"{axis}_scale"])
+        for axis, value in zip("xyz", values)
+    )
+
+
+def calibration_from_extrema(minimum, maximum):
+    radii = {
+        axis: (float(maximum[axis]) - float(minimum[axis])) / 2.0
+        for axis in "xyz"
+    }
+    invalid = [axis for axis, radius in radii.items() if radius <= 0]
+    if invalid:
+        raise ValueError(
+            "Not enough movement to calibrate axes: " + ", ".join(invalid)
+        )
+
+    average_radius = sum(radii.values()) / len(radii)
+    calibration = {}
+    for axis in "xyz":
+        calibration[f"{axis}_offset"] = (
+            float(maximum[axis]) + float(minimum[axis])
+        ) / 2.0
+        calibration[f"{axis}_scale"] = average_radius / radii[axis]
+    calibration["minimum"] = dict(minimum)
+    calibration["maximum"] = dict(maximum)
+    return calibration
+
+
+class Lsm303Sensor:
+    """Low-level access to the LSM303 accelerometer and magnetometer."""
+
+    def __init__(self, bus_number=1, bus=None):
+        if bus is None:
+            from smbus import SMBus
+
+            bus = SMBus(bus_number)
+            self._owns_bus = True
+        else:
+            self._owns_bus = False
+        self.bus = bus
+        self._configure()
+
+    def _configure(self):
+        # Accelerometer: 10 Hz, high-resolution mode, ±2 g range.
+        self.bus.write_byte_data(ACCELEROMETER, 0x20, 0x27)
+        self.bus.write_byte_data(ACCELEROMETER, 0x23, 0x88)
+
+        # Magnetometer: 30 Hz, ±1.3 gauss, continuous measurement mode.
+        self.bus.write_byte_data(MAGNETOMETER, 0x00, 0x14)
+        self.bus.write_byte_data(MAGNETOMETER, 0x01, 0x20)
+        self.bus.write_byte_data(MAGNETOMETER, 0x02, 0x00)
+
+    def read_accelerometer(self):
+        data = self.bus.read_i2c_block_data(
+            ACCELEROMETER,
+            0x28 | 0x80,
+            6,
+        )
+        return (
+            signed_accelerometer_axis(data, 0),
+            signed_accelerometer_axis(data, 2),
+            signed_accelerometer_axis(data, 4),
+        )
+
+    def read_magnetometer(self):
+        # The sensor returns six consecutive bytes in X, Z, Y order.
+        data = self.bus.read_i2c_block_data(MAGNETOMETER, 0x03, 6)
+        return (
+            signed_big_endian(data[0], data[1]),
+            signed_big_endian(data[4], data[5]),
+            signed_big_endian(data[2], data[3]),
+        )
+
+    def close(self):
+        if self._owns_bus and hasattr(self.bus, "close"):
+            self.bus.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
 
 
 def calculate_orientation(mag_x, mag_y, mag_z, acc_x, acc_y, acc_z):
@@ -121,9 +239,7 @@ class PositionSmoother:
 
 
 class TelescopeImu:
-    def __init__(self, calibration_file, settings, bus_number=1):
-        from smbus import SMBus
-
+    def __init__(self, calibration_file, settings, bus_number=1, sensor=None):
         self.settings = settings
         self.smoother = PositionSmoother(
             time_constant_seconds=float(
@@ -131,45 +247,22 @@ class TelescopeImu:
             ),
             deadband_degrees=float(settings.get("deadband_deg", 0.3)),
         )
-        self.calibration = json.loads(
-            Path(calibration_file).read_text(encoding="utf-8")
-        )
-        self.bus = SMBus(bus_number)
-
-        # Accelerometer at 10 Hz, high-resolution mode, ±2 g range.
-        self.bus.write_byte_data(ACCELEROMETER, 0x20, 0x27)
-        self.bus.write_byte_data(ACCELEROMETER, 0x23, 0x88)
-
-        # Magnetometer at 30 Hz, ±1.3 gauss, continuous measurement mode.
-        self.bus.write_byte_data(MAGNETOMETER, 0x00, 0x14)
-        self.bus.write_byte_data(MAGNETOMETER, 0x01, 0x20)
-        self.bus.write_byte_data(MAGNETOMETER, 0x02, 0x00)
+        self.calibration = load_calibration(calibration_file)
+        self.sensor = sensor or Lsm303Sensor(bus_number=bus_number)
 
     def read_accelerometer(self):
-        data = self.bus.read_i2c_block_data(ACCELEROMETER, 0x28 | 0x80, 6)
-        return (
-            signed_accelerometer_axis(data, 0),
-            signed_accelerometer_axis(data, 2),
-            signed_accelerometer_axis(data, 4),
-        )
+        return self.sensor.read_accelerometer()
 
     def read_magnetometer(self):
-        data = self.bus.read_i2c_block_data(MAGNETOMETER, 0x03, 6)
-        return (
-            signed_big_endian(data[0], data[1]),
-            signed_big_endian(data[4], data[5]),
-            signed_big_endian(data[2], data[3]),
-        )
+        return self.sensor.read_magnetometer()
 
     def read_orientation(self):
         acc_x, acc_y, acc_z = self.read_accelerometer()
         raw_x, raw_y, raw_z = self.read_magnetometer()
-        corrected = []
-        for axis, value in zip("xyz", (raw_x, raw_y, raw_z)):
-            corrected.append(
-                (value - self.calibration[f"{axis}_offset"])
-                * self.calibration[f"{axis}_scale"]
-            )
+        corrected = apply_calibration(
+            (raw_x, raw_y, raw_z),
+            self.calibration,
+        )
         return calculate_orientation(
             *corrected,
             acc_x,
@@ -185,3 +278,6 @@ class TelescopeImu:
         )
         azimuth, altitude = self.smoother.update(azimuth, altitude)
         return azimuth, altitude, orientation
+
+    def close(self):
+        self.sensor.close()
