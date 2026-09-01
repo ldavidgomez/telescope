@@ -9,4 +9,5 @@ compass_calibration.csv
 compass_test.csv
 imu_recording.csv
 imu_recording.json
+imu_replay.csv
 telescope_config.json

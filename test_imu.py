@@ -1,6 +1,7 @@
 import unittest
 
 from imu import (
+    ComplementaryOrientationFilter,
     GYROSCOPE,
     GYROSCOPE_SENSITIVITY_DPS,
     Lsm303Sensor,
@@ -41,6 +42,44 @@ class FakeGyroscope:
 
 
 class ImuTest(unittest.TestCase):
+    def test_complementary_filter_uses_gyro_and_wraps_heading(self):
+        orientation_filter = ComplementaryOrientationFilter(
+            time_constant_seconds=1.0,
+        )
+        initial = Orientation(359.0, 359.0, 0.0, 0.0)
+        orientation_filter.update(initial, (0.0, 0.0, 0.0), 0.0)
+
+        result = orientation_filter.update(
+            Orientation(1.0, 1.0, 0.0, 0.0),
+            (10.0, -20.0, -5.0),
+            0.1,
+        )
+
+        self.assertGreater(result.heading, 359.0)
+        self.assertLess(result.heading, 360.0)
+        self.assertGreater(result.roll, 0.0)
+        self.assertGreater(result.pitch, 0.0)
+
+    def test_complementary_filter_can_follow_measurements_exactly(self):
+        orientation_filter = ComplementaryOrientationFilter(
+            time_constant_seconds=0.0,
+        )
+        orientation_filter.update(
+            Orientation(10.0, 10.0, 1.0, 2.0),
+            (0.0, 0.0, 0.0),
+            0.0,
+        )
+        measured = Orientation(20.0, 20.0, 3.0, 4.0)
+
+        self.assertEqual(
+            orientation_filter.update(
+                measured,
+                (100.0, 100.0, 100.0),
+                1.0,
+            ),
+            measured,
+        )
+
     def test_reads_l3gd20h_gyroscope_in_degrees_per_second(self):
         bus = FakeBus()
         sensor = Lsm303Sensor(bus=bus, enable_gyroscope=True)

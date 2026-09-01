@@ -25,6 +25,7 @@ normally appears as `/dev/ttyACM0`.
 - `stellarium_server.py`: network server and application coordination.
 - `calibrate_compass.py`: magnetometer calibration tool.
 - `record_imu.py`: synchronized nine-axis recording and gyro bias measurement.
+- `replay_imu.py`: offline evaluation of gyroscope-assisted orientation.
 - `compass_test.py`, `tilt_test.py`, `display_tilt.py`: hardware diagnostics.
 - `telescope.service`: automatic systemd service.
 
@@ -119,6 +120,16 @@ The Raspberry Pi writes `imu_recording.csv` with raw and corrected readings for
 all nine axes, plus the current tilt-compensated orientation. A companion
 `imu_recording.json` stores the measured gyro bias and actual sample rate. Both
 files are ignored by Git.
+
+Replay the latest recording through the experimental complementary filter:
+
+```bash
+make replay-imu
+```
+
+This creates `imu_replay.csv` without changing the live Stellarium service.
+The default 0.1-second correction time was selected from a controlled test
+containing separate azimuth and altitude movements with stationary pauses.
 
 ## Development
 

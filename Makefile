@@ -1,9 +1,14 @@
 PI_HOST ?= telescope.local
 PI_USER ?= astro
 PI_DIR  ?= /home/astro/telescope
+SSH_KEY ?= $(HOME)/.ssh/telescope_ed25519
 CONFIG_FILE ?= telescope_config.json
 RECORD_SECONDS ?= 30
 RECORD_RATE ?= 100
+
+SSH_OPTIONS = -o BatchMode=yes -o IdentitiesOnly=yes -i $(SSH_KEY)
+SSH = ssh $(SSH_OPTIONS)
+RSYNC = rsync -e 'ssh $(SSH_OPTIONS)'
 
 RSYNC_EXCLUDES = \
 	--exclude=.git/ \
@@ -19,7 +24,7 @@ RSYNC_EXCLUDES = \
 	--exclude=.~ \
 	--exclude=.DS_Store
 
-.PHONY: help deploy deploy-config ssh stellarium test \
+.PHONY: help deploy deploy-config ssh stellarium test replay-imu \
 	service-install service-permissions service-update service-restart service-stop \
 	service-status service-logs calibrate compass-test record-imu fetch-imu
 
@@ -39,53 +44,57 @@ help:
 	@echo "make compass-test  Stop the service and run the compass test"
 	@echo "make record-imu  Record synchronized 9-axis IMU data"
 	@echo "make fetch-imu  Copy the latest IMU recording to the Mac"
+	@echo "make replay-imu  Test sensor fusion against the latest recording"
 	@echo "make test     Run the local automated tests"
 
 deploy:
-	rsync -av $(RSYNC_EXCLUDES) ./ $(PI_USER)@$(PI_HOST):$(PI_DIR)/
+	$(RSYNC) -av $(RSYNC_EXCLUDES) ./ $(PI_USER)@$(PI_HOST):$(PI_DIR)/
 
 deploy-config:
-	rsync -av $(CONFIG_FILE) $(PI_USER)@$(PI_HOST):$(PI_DIR)/telescope_config.json
+	$(RSYNC) -av $(CONFIG_FILE) $(PI_USER)@$(PI_HOST):$(PI_DIR)/telescope_config.json
 
 ssh:
-	ssh $(PI_USER)@$(PI_HOST)
+	$(SSH) $(PI_USER)@$(PI_HOST)
 
 stellarium:
-	ssh -t $(PI_USER)@$(PI_HOST) 'cd $(PI_DIR) && python3 stellarium_server.py'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'cd $(PI_DIR) && python3 stellarium_server.py'
 
 service-install: deploy
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/telescope.service /etc/systemd/system/telescope.service && sudo systemctl daemon-reload && sudo systemctl enable --now telescope.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/telescope.service /etc/systemd/system/telescope.service && sudo systemctl daemon-reload && sudo systemctl enable --now telescope.service'
 
 service-permissions: deploy
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo visudo -cf $(PI_DIR)/telescope-sudoers && sudo install -o root -g root -m 0440 $(PI_DIR)/telescope-sudoers /etc/sudoers.d/telescope && sudo visudo -cf /etc/sudoers.d/telescope'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo visudo -cf $(PI_DIR)/telescope-sudoers && sudo install -o root -g root -m 0440 $(PI_DIR)/telescope-sudoers /etc/sudoers.d/telescope && sudo visudo -cf /etc/sudoers.d/telescope'
 
 service-update: deploy
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl restart telescope.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl restart telescope.service'
 
 service-restart:
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl restart telescope.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl restart telescope.service'
 
 service-stop:
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl stop telescope.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl stop telescope.service'
 
 service-status:
-	ssh -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope.service'
 
 service-logs:
-	ssh -t $(PI_USER)@$(PI_HOST) 'sudo -n journalctl -u telescope.service -f'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n journalctl -u telescope.service -f'
 
 calibrate:
-	ssh -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 calibrate_compass.py'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 calibrate_compass.py'
 
 compass-test:
-	ssh -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 compass_test.py'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 compass_test.py'
 
 record-imu:
-	ssh -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 record_imu.py --duration $(RECORD_SECONDS) --sample-rate $(RECORD_RATE)'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 record_imu.py --duration $(RECORD_SECONDS) --sample-rate $(RECORD_RATE)'
 
 fetch-imu:
-	rsync -av $(PI_USER)@$(PI_HOST):$(PI_DIR)/imu_recording.csv ./
-	rsync -av $(PI_USER)@$(PI_HOST):$(PI_DIR)/imu_recording.json ./
+	$(RSYNC) -av $(PI_USER)@$(PI_HOST):$(PI_DIR)/imu_recording.csv ./
+	$(RSYNC) -av $(PI_USER)@$(PI_HOST):$(PI_DIR)/imu_recording.json ./
+
+replay-imu:
+	python3 replay_imu.py
 
 test:
 	python3 -m unittest discover -v

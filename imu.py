@@ -335,6 +335,75 @@ class PositionSmoother:
         return self.azimuth, self.altitude
 
 
+def shortest_angle_degrees(target, current):
+    return (target - current + 180.0) % 360.0 - 180.0
+
+
+class ComplementaryOrientationFilter:
+    """Combine stable absolute angles with responsive gyroscope rates.
+
+    This filter models the telescope's two primary motions. It is a safe
+    intermediate step that can be replayed against recorded data before it
+    controls Stellarium.
+    """
+
+    def __init__(
+        self,
+        time_constant_seconds=0.1,
+        gyro_signs=(1.0, -1.0, -1.0),
+    ):
+        if time_constant_seconds < 0:
+            raise ValueError("Filter time constant cannot be negative.")
+        if len(gyro_signs) != 3:
+            raise ValueError("Gyroscope signs must contain X, Y, and Z.")
+        self.time_constant = float(time_constant_seconds)
+        self.gyro_signs = tuple(float(value) for value in gyro_signs)
+        self.orientation = None
+
+    def update(self, measured, gyroscope_dps, delta_time):
+        if delta_time < 0:
+            raise ValueError("Filter delta time cannot be negative.")
+        if self.orientation is None or delta_time == 0:
+            self.orientation = measured
+            return measured
+
+        gyro_x, gyro_y, gyro_z = (
+            value * sign
+            for value, sign in zip(gyroscope_dps, self.gyro_signs)
+        )
+        predicted_roll = self.orientation.roll + gyro_x * delta_time
+        predicted_pitch = self.orientation.pitch + gyro_y * delta_time
+        predicted_heading = (
+            self.orientation.heading + gyro_z * delta_time
+        ) % 360.0
+
+        measurement_weight = (
+            1.0
+            if self.time_constant == 0
+            else 1.0 - math.exp(-delta_time / self.time_constant)
+        )
+        heading_error = shortest_angle_degrees(
+            measured.heading,
+            predicted_heading,
+        )
+        heading = (
+            predicted_heading + measurement_weight * heading_error
+        ) % 360.0
+        roll = predicted_roll + measurement_weight * (
+            measured.roll - predicted_roll
+        )
+        pitch = predicted_pitch + measurement_weight * (
+            measured.pitch - predicted_pitch
+        )
+        self.orientation = Orientation(
+            heading_2d=measured.heading_2d,
+            heading=heading,
+            roll=roll,
+            pitch=pitch,
+        )
+        return self.orientation
+
+
 class TelescopeImu:
     def __init__(self, calibration_file, settings, bus_number=1, sensor=None):
         self.settings = settings
