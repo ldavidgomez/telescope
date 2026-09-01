@@ -11,6 +11,7 @@ from astronomy import horizontal_to_j2000, j2000_to_horizontal
 from configuration import load_config
 from display import DEFAULT_LCD_DEVICE, LcdDisplay
 from imu import TelescopeImu
+from lx200_protocol import Lx200Session
 from stellarium_protocol import (
     current_position_message,
     decode_goto_message,
@@ -19,6 +20,7 @@ from stellarium_protocol import (
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 10001
+DEFAULT_LX200_PORT = 10002
 DEFAULT_INTERVAL_SECONDS = 0.5
 DEFAULT_GUIDANCE_TOLERANCE_DEGREES = 0.5
 DEFAULT_CONFIG_FILE = Path(__file__).with_name("telescope_config.json")
@@ -100,6 +102,14 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         with self.target_lock:
             self.target = (ra_degrees, dec_degrees)
             self.last_display_update = 0.0
+        self.update_display(force=True)
+
+    def set_observer(self, observer):
+        self.observer = observer
+        self.log(
+            "Observer updated by LX200: "
+            f"{observer[0]:+.4f} deg, {observer[1]:+.4f} deg"
+        )
         self.update_display(force=True)
 
     def read_current_position(self):
@@ -200,7 +210,12 @@ class TelescopeRequestHandler(socketserver.BaseRequestHandler):
         while len(self.buffer) >= 2:
             length = struct.unpack_from("<H", self.buffer)[0]
             if length < 4 or length > 1024:
-                raise ValueError(f"Invalid Stellarium message length: {length}")
+                self.server.log(
+                    "Ignoring a non-Stellarium probe from "
+                    f"{self.client_address[0]}"
+                )
+                self.buffer.clear()
+                return
             if len(self.buffer) < length:
                 return
 
@@ -227,12 +242,102 @@ class TelescopeRequestHandler(socketserver.BaseRequestHandler):
         self.server.log(f"Stellarium disconnected from {self.client_address[0]}")
 
 
+class Lx200Server(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+    def __init__(self, address, telescope):
+        super().__init__(address, Lx200RequestHandler)
+        self.telescope = telescope
+
+
+class Lx200RequestHandler(socketserver.BaseRequestHandler):
+    def setup(self):
+        self.buffer = ""
+        telescope = self.server.telescope
+        self.session = Lx200Session(
+            telescope.read_current_position,
+            self.set_target,
+            telescope.observer,
+            telescope.set_observer,
+        )
+        telescope.log(f"LX200 connected from {self.client_address[0]}")
+
+    def handle(self):
+        while True:
+            try:
+                data = self.request.recv(1024)
+            except ConnectionResetError:
+                break
+            if not data:
+                break
+
+            alignment_queries = data.count(b"\x06")
+            if alignment_queries:
+                self.request.sendall(b"A" * alignment_queries)
+                self.server.telescope.log(
+                    "LX200 reported Alt-Az alignment mode."
+                )
+                data = data.replace(b"\x06", b"")
+            if not data:
+                continue
+            self.buffer += data.decode("ascii", errors="ignore")
+            self.process_commands()
+
+    def process_commands(self):
+        while "#" in self.buffer:
+            raw_command, self.buffer = self.buffer.split("#", 1)
+            colon = raw_command.find(":")
+            if colon < 0:
+                continue
+            command = raw_command[colon + 1 :]
+            try:
+                response = self.session.execute(command)
+            except (OSError, ValueError, KeyError) as error:
+                self.server.telescope.report_hardware_failure(error)
+                return
+            if command in ("GR", "GD"):
+                self.server.telescope.update_display()
+            if command not in ("GR", "GD", "D", "GW"):
+                self.server.telescope.log(
+                    f"LX200 command {command!r}, response {response!r}"
+                )
+            if response:
+                self.request.sendall(response.encode("ascii"))
+
+    def set_target(self, ra_degrees, dec_degrees):
+        telescope = self.server.telescope
+        telescope.set_target(ra_degrees, dec_degrees)
+        azimuth, altitude = j2000_to_horizontal(
+            ra_degrees,
+            dec_degrees,
+            *telescope.observer,
+        )
+        telescope.log(
+            "LX200 requested target: "
+            f"RA {ra_degrees / 15.0:.4f} h, "
+            f"Dec {dec_degrees:+.4f} deg, "
+            f"Az {azimuth:.2f} deg, Alt {altitude:+.2f} deg"
+        )
+
+    def finish(self):
+        self.server.telescope.log(
+            f"LX200 disconnected from {self.client_address[0]}"
+        )
+
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Expose the IMU telescope position to Stellarium."
     )
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
+    parser.add_argument(
+        "--lx200-port",
+        type=int,
+        default=DEFAULT_LX200_PORT,
+        help="LX200 TCP port for Stellarium Mobile; use 0 to disable it.",
+    )
     parser.add_argument("--ra-deg", type=float, default=DEFAULT_RA_DEGREES)
     parser.add_argument("--dec-deg", type=float, default=DEFAULT_DEC_DEGREES)
     parser.add_argument("--config", default=str(DEFAULT_CONFIG_FILE))
@@ -288,12 +393,30 @@ def main():
             display,
             position_provider,
         ) as server:
+            lx200_server = None
+            lx200_thread = None
+            if args.lx200_port:
+                lx200_server = Lx200Server(
+                    (args.host, args.lx200_port),
+                    server,
+                )
+                lx200_thread = threading.Thread(
+                    target=lx200_server.serve_forever,
+                    kwargs={"poll_interval": 0.2},
+                    daemon=True,
+                )
+                lx200_thread.start()
             position_mode = "fixed test position" if args.fixed_position else "IMU"
             LOGGER.info(
                 "Stellarium telescope server listening on port %d.",
                 args.port,
             )
             LOGGER.info("Position source: %s.", position_mode)
+            if lx200_server is not None:
+                LOGGER.info(
+                    "LX200 telescope server listening on port %d.",
+                    args.lx200_port,
+                )
             if position_provider is not None and position_provider.fusion_enabled:
                 LOGGER.info(
                     "Gyroscope fusion: enabled at %d Hz.",
@@ -308,6 +431,11 @@ def main():
                 server.serve_forever(poll_interval=0.2)
             except KeyboardInterrupt:
                 LOGGER.info("Server stopped.")
+            finally:
+                if lx200_server is not None:
+                    lx200_server.shutdown()
+                    lx200_server.server_close()
+                    lx200_thread.join(timeout=2.0)
             if server.fatal_error is not None:
                 raise RuntimeError("The IMU became unavailable") from server.fatal_error
     finally:

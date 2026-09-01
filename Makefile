@@ -27,7 +27,8 @@ RSYNC_EXCLUDES = \
 
 .PHONY: help deploy deploy-config ssh stellarium test replay-imu \
 	service-install service-permissions service-update service-restart service-stop \
-	service-status service-logs calibrate compass-test record-imu fetch-imu
+	service-status service-logs bluetooth-install bluetooth-status bluetooth-logs \
+	calibrate compass-test record-imu fetch-imu
 
 help:
 	@echo "make deploy   Copy the project to the Raspberry Pi"
@@ -41,6 +42,9 @@ help:
 	@echo "make service-stop  Stop the automatic service"
 	@echo "make service-status  Show the automatic service status"
 	@echo "make service-logs  Follow the automatic service logs"
+	@echo "make bluetooth-install  Install the Bluetooth LX200 serial bridge"
+	@echo "make bluetooth-status  Show the Bluetooth bridge status"
+	@echo "make bluetooth-logs  Follow the Bluetooth bridge logs"
 	@echo "make calibrate  Stop the service and calibrate the compass"
 	@echo "make compass-test  Stop the service and run the compass test"
 	@echo "make record-imu  Record synchronized 9-axis IMU data"
@@ -80,6 +84,15 @@ service-status:
 
 service-logs:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n journalctl -u telescope.service -f'
+
+bluetooth-install: deploy
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -d -m 0755 /etc/systemd/system/bluetooth.service.d && sudo install -m 0644 $(PI_DIR)/bluetooth-compat.conf /etc/systemd/system/bluetooth.service.d/compat.conf && sudo install -m 0644 $(PI_DIR)/telescope-bluetooth.service /etc/systemd/system/telescope-bluetooth.service && sudo systemctl daemon-reload && sudo systemctl restart bluetooth.service && sudo systemctl enable --now telescope-bluetooth.service'
+
+bluetooth-status:
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope-bluetooth.service'
+
+bluetooth-logs:
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'journalctl -u telescope-bluetooth.service -f'
 
 calibrate:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 calibrate_compass.py'

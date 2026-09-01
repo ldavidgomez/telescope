@@ -11,6 +11,7 @@ serial LCD.
 - Adafruit 10-DOF IMU (L3GD20H + LSM303 + BMP180)
 - Adafruit USB serial 16x2 RGB LCD
 - RTL8188EUS USB Wi-Fi adapter
+- CSR8510 USB Bluetooth adapter
 
 The IMU uses I2C bus 1 at addresses `0x19`, `0x1e`, `0x6b`, and `0x77`. The LCD
 normally appears as `/dev/ttyACM0`.
@@ -22,7 +23,9 @@ normally appears as `/dev/ttyACM0`.
 - `imu.py`: sensor access, calibration, orientation, mapping, and smoothing.
 - `display.py`: fault-tolerant serial LCD access.
 - `stellarium_protocol.py`: binary Stellarium protocol encoding and decoding.
+- `lx200_protocol.py`: LX200 command parsing and coordinate formatting.
 - `stellarium_server.py`: network server and application coordination.
+- `bluetooth_bridge.py`: Bluetooth serial to local LX200 TCP bridge.
 - `calibrate_compass.py`: magnetometer calibration tool.
 - `record_imu.py`: synchronized nine-axis recording and gyro bias measurement.
 - `replay_imu.py`: offline evaluation of gyroscope-assisted orientation.
@@ -91,8 +94,35 @@ After changing the program, deploy and restart it with:
 make service-update
 ```
 
-The server listens on `telescope.local:10001`. Configure Stellarium Telescope
-Control to use an external telescope server at that address and port.
+The server listens on two ports and both connections share the same IMU,
+target, and LCD guidance:
+
+- `telescope.local:10001`: Stellarium desktop binary protocol.
+- `telescope.local:10002`: LX200 protocol for Stellarium Mobile Plus.
+
+Configure Stellarium Telescope Control on the Mac to use an external telescope
+server on port `10001`. Port `10002` can also be used to test the mobile LX200
+connection over Wi-Fi before enabling Bluetooth serial transport.
+
+### Bluetooth connection for Android
+
+The Android connection uses classic Bluetooth Serial Port Profile (SPP), not
+Bluetooth networking. Install its independent service once:
+
+```bash
+make bluetooth-install
+make bluetooth-status
+```
+
+The installation enables BlueZ compatibility mode so the Raspberry Pi can
+publish an SPP service, then exposes RFCOMM channel 1 and bridges it only to the
+local LX200 port. The phone must be paired and trusted before using the service.
+In Stellarium Mobile Plus, add a telescope using the Meade LX200 protocol and
+select the paired `telescope` Bluetooth device.
+
+The Bluetooth bridge is deliberately separate from `telescope.service`. A
+Bluetooth or phone failure therefore cannot stop IMU sampling, LCD guidance, or
+the existing Wi-Fi connections.
 
 When a target is selected, the LCD guidance line uses `<` and `>` for azimuth,
 `^` and `v` for altitude, and shows `OK` when an axis is within 0.5 degrees of

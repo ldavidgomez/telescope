@@ -1,5 +1,6 @@
 import struct
 import unittest
+from unittest.mock import Mock, call
 
 from stellarium_protocol import (
     POSITION_MESSAGE_LENGTH,
@@ -10,7 +11,11 @@ from stellarium_protocol import (
     encode_dec,
     encode_ra,
 )
-from stellarium_server import format_guidance_line, shortest_angle
+from stellarium_server import (
+    Lx200RequestHandler,
+    format_guidance_line,
+    shortest_angle,
+)
 
 
 class StellariumProtocolTest(unittest.TestCase):
@@ -75,6 +80,46 @@ class StellariumProtocolTest(unittest.TestCase):
         ra_degrees, dec_degrees = decode_goto_message(message)
         self.assertAlmostEqual(ra_degrees, 120.0, places=6)
         self.assertAlmostEqual(dec_degrees, 35.0, places=6)
+
+    def test_lx200_handler_preserves_colons_inside_coordinates(self):
+        handler = object.__new__(Lx200RequestHandler)
+        handler.buffer = ":Sr04:35:55#:Sd+16*30:33#"
+        handler.session = Mock()
+        handler.session.execute.side_effect = ("1", "1")
+        handler.request = Mock()
+        handler.server = Mock()
+
+        handler.process_commands()
+
+        self.assertEqual(
+            handler.session.execute.call_args_list,
+            [call("Sr04:35:55"), call("Sd+16*30:33")],
+        )
+        self.assertEqual(handler.request.sendall.call_count, 2)
+
+    def test_lx200_handler_reports_alt_az_alignment(self):
+        handler = object.__new__(Lx200RequestHandler)
+        handler.buffer = ""
+        handler.session = Mock()
+        handler.request = Mock()
+        handler.request.recv.side_effect = [b"#\x06", b""]
+        handler.server = Mock()
+
+        handler.handle()
+
+        handler.request.sendall.assert_called_once_with(b"A")
+
+    def test_lx200_position_query_updates_display(self):
+        handler = object.__new__(Lx200RequestHandler)
+        handler.buffer = ":GR#"
+        handler.session = Mock()
+        handler.session.execute.return_value = "04:35:55#"
+        handler.request = Mock()
+        handler.server = Mock()
+
+        handler.process_commands()
+
+        handler.server.telescope.update_display.assert_called_once_with()
 
 
 if __name__ == "__main__":

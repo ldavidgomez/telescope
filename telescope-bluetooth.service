@@ -1,0 +1,16 @@
+[Unit]
+Description=Bluetooth serial bridge for the telescope LX200 server
+Requires=bluetooth.service
+After=bluetooth.service telescope.service
+
+[Service]
+Type=simple
+ExecStartPre=/usr/sbin/rfkill unblock bluetooth
+ExecStartPre=/usr/bin/bluetoothctl power on
+ExecStartPre=-/usr/bin/sdptool add --handle=0x10010 --channel=1 SP
+ExecStart=/usr/bin/rfcomm -i hci0 -r -A -E watch rfcomm0 1 /usr/sbin/runuser -u astro -- /usr/bin/python3 /home/astro/telescope/bluetooth_bridge.py {} --host 127.0.0.1 --port 10002
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
