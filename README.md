@@ -31,6 +31,7 @@ normally appears as `/dev/ttyACM0`.
 - `replay_imu.py`: offline evaluation of gyroscope-assisted orientation.
 - `compass_test.py`, `tilt_test.py`, `display_tilt.py`: hardware diagnostics.
 - `telescope.service`: automatic systemd service.
+- `telescope-bluetooth.service`: automatic RFCOMM-to-LX200 bridge service.
 
 ## Raspberry Pi preparation
 
@@ -120,9 +121,73 @@ local LX200 port. The phone must be paired and trusted before using the service.
 In Stellarium Mobile Plus, add a telescope using the Meade LX200 protocol and
 select the paired `telescope` Bluetooth device.
 
+This CSR8510 adapter is authenticated with `rfcomm -A`. Explicit RFCOMM
+encryption enforcement is not used because `rfcomm -E` caused Android 14 to
+fail with `InputOutputError`; the phone must still be paired before it can
+connect.
+
+To pair a new Android phone, start an interactive agent on the Raspberry Pi:
+
+```text
+bluetoothctl
+agent KeyboardDisplay
+default-agent
+pairable on
+discoverable on
+```
+
+Select `telescope` in Android's Bluetooth settings, verify that both devices
+show the same passkey, answer `yes` in `bluetoothctl`, and then trust the phone:
+
+```text
+trust PHONE_BLUETOOTH_ADDRESS
+```
+
+Discoverability expires after 180 seconds. Run `bluetoothctl discoverable on`
+before opening Stellarium's Bluetooth device selector if `telescope` is not
+listed. If Android reports an incorrect pairing PIN, remove or forget the bond
+on both devices and pair them again; stale link keys cannot be repaired from
+only one side.
+
 The Bluetooth bridge is deliberately separate from `telescope.service`. A
 Bluetooth or phone failure therefore cannot stop IMU sampling, LCD guidance, or
 the existing Wi-Fi connections.
+
+### Field operation with Stellarium Mobile Plus
+
+The validated cable-free data path is:
+
+```text
+IMU -> Raspberry Pi -> LX200 TCP localhost:10002 -> Bluetooth SPP -> Android
+```
+
+In Stellarium Mobile Plus:
+
+1. Select a Bluetooth telescope connection and the paired `telescope` device.
+2. Let the app auto-detect the LX200-compatible controller.
+3. Synchronize time and location.
+4. Select an object and send the GoTo command.
+5. Move the Dobsonian manually by following the LCD arrows.
+
+The server accepts the phone's location and immediately uses it for coordinate
+conversion. This location is intentionally session-only: restarting
+`telescope.service` restores the observer coordinates from
+`telescope_config.json`, so synchronize again after a service or Raspberry Pi
+restart. The Raspberry Pi keeps its own system clock; Stellarium can read and
+confirm its date, local time, and UTC offset.
+
+For a final offline check, disable Wi-Fi on the phone while keeping Bluetooth
+enabled. The telescope pointer, target commands, synchronized observer data,
+and LCD guidance must continue to work.
+
+Useful Bluetooth diagnostics on the Raspberry Pi:
+
+```bash
+systemctl status telescope-bluetooth.service
+sudo journalctl -u telescope-bluetooth.service -f
+rfcomm -a
+bluetoothctl info PHONE_BLUETOOTH_ADDRESS
+```
 
 When a target is selected, the LCD guidance line uses `<` and `>` for azimuth,
 `^` and `v` for altitude, and shows `OK` when an axis is within 0.5 degrees of
@@ -187,4 +252,6 @@ make test
 
 Hardware access is delayed until a sensor object is created, so modules and
 tests can be imported on macOS. Runtime messages and code comments are written
-in English.
+in English. The current suite contains 40 automated tests covering astronomy,
+configuration, sensor fusion, Stellarium's binary protocol, LX200, LCD
+guidance, recording, and mobile synchronization behavior.
