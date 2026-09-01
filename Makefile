@@ -20,6 +20,7 @@ RSYNC_EXCLUDES = \
 	--exclude=compass_test.csv \
 	--exclude=imu_recording.csv \
 	--exclude=imu_recording.json \
+	--exclude=imu_replay.csv \
 	--exclude=telescope_config.json \
 	--exclude=.~ \
 	--exclude=.DS_Store

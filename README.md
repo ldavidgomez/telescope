@@ -54,6 +54,18 @@ Important IMU settings:
 - `azimuth_offset_deg`: mechanical heading correction.
 - `smoothing_time_constant_s`: response smoothing; larger values move slower.
 - `deadband_deg`: ignores movements smaller than this angle.
+- `fusion_enabled`: enables the experimental gyroscope-assisted orientation.
+- `fusion_sample_rate_hz`: internal fusion rate; use `100` for this hardware.
+- `fusion_time_constant_s`: absolute-sensor correction time; `0.1` is the
+  measured starting point for this telescope.
+- `gyroscope_bias_dps`: stationary X, Y, and Z bias measured by
+  `record_imu.py`.
+- `gyroscope_signs`: maps the board axes to roll, pitch, and heading rates.
+
+Fusion runs in a background sampling thread, so Stellarium can keep its lower
+network update rate without losing fast gyroscope movement. Set
+`fusion_enabled` to `false` to return immediately to the original
+accelerometer-and-magnetometer calculation.
 
 ## Deploy and operate
 
@@ -81,6 +93,10 @@ make service-update
 
 The server listens on `telescope.local:10001`. Configure Stellarium Telescope
 Control to use an external telescope server at that address and port.
+
+When a target is selected, the LCD guidance line uses `<` and `>` for azimuth,
+`^` and `v` for altitude, and shows `OK` when an axis is within 0.5 degrees of
+the target. The remaining angular distance stays visible beside each symbol.
 
 ## Calibration and diagnostics
 

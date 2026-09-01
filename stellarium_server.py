@@ -20,6 +20,7 @@ from stellarium_protocol import (
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 10001
 DEFAULT_INTERVAL_SECONDS = 0.5
+DEFAULT_GUIDANCE_TOLERANCE_DEGREES = 0.5
 DEFAULT_CONFIG_FILE = Path(__file__).with_name("telescope_config.json")
 LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,27 @@ DEFAULT_DEC_DEGREES = 38.78368896
 
 def shortest_angle(target_degrees, current_degrees):
     return (target_degrees - current_degrees + 180.0) % 360.0 - 180.0
+
+
+def format_guidance_axis(
+    label,
+    difference_degrees,
+    positive_symbol,
+    negative_symbol,
+    tolerance_degrees=DEFAULT_GUIDANCE_TOLERANCE_DEGREES,
+):
+    if abs(difference_degrees) <= tolerance_degrees:
+        return f"{label} OK"
+    symbol = positive_symbol if difference_degrees > 0 else negative_symbol
+    magnitude = abs(difference_degrees)
+    formatted = f"{magnitude:.1f}" if magnitude < 100.0 else f"{magnitude:.0f}"
+    return f"{label}{symbol}{formatted}"
+
+
+def format_guidance_line(delta_azimuth, delta_altitude):
+    azimuth = format_guidance_axis("AZ", delta_azimuth, ">", "<")
+    altitude = format_guidance_axis("AL", delta_altitude, "^", "v")
+    return f"{azimuth} {altitude}"
 
 
 class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
@@ -124,7 +146,7 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         delta_altitude = target_altitude - current_altitude
         self.display.show(
             current_line,
-            f"dA{delta_azimuth:+05.1f} dH{delta_altitude:+05.1f}",
+            format_guidance_line(delta_azimuth, delta_altitude),
         )
         return target_azimuth, target_altitude
 
@@ -272,6 +294,11 @@ def main():
                 args.port,
             )
             LOGGER.info("Position source: %s.", position_mode)
+            if position_provider is not None and position_provider.fusion_enabled:
+                LOGGER.info(
+                    "Gyroscope fusion: enabled at %d Hz.",
+                    position_provider.fusion_sample_rate,
+                )
             LOGGER.info(
                 "Observer: %+.4f deg, %+.4f deg.",
                 observer[0],

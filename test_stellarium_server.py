@@ -10,13 +10,33 @@ from stellarium_protocol import (
     encode_dec,
     encode_ra,
 )
-from stellarium_server import shortest_angle
+from stellarium_server import format_guidance_line, shortest_angle
 
 
 class StellariumProtocolTest(unittest.TestCase):
     def test_shortest_angle(self):
         self.assertAlmostEqual(shortest_angle(10.0, 350.0), 20.0)
         self.assertAlmostEqual(shortest_angle(350.0, 10.0), -20.0)
+
+    def test_formats_directional_guidance(self):
+        self.assertEqual(
+            format_guidance_line(85.2, 12.4),
+            "AZ>85.2 AL^12.4",
+        )
+        self.assertEqual(
+            format_guidance_line(-20.0, -4.5),
+            "AZ<20.0 ALv4.5",
+        )
+
+    def test_guidance_uses_ok_inside_tolerance(self):
+        self.assertEqual(
+            format_guidance_line(0.5, -0.49),
+            "AZ OK AL OK",
+        )
+
+    def test_guidance_keeps_shortest_azimuth_direction(self):
+        delta = shortest_angle(10.0, 350.0)
+        self.assertEqual(format_guidance_line(delta, 0.0), "AZ>20.0 AL OK")
 
     def test_angle_encoding_round_trip(self):
         for ra_degrees in (0.0, 90.0, 180.0, 279.23473479, 359.999):

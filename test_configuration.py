@@ -34,6 +34,32 @@ class ConfigurationTest(unittest.TestCase):
                 }
             )
 
+    def test_validates_fusion_configuration(self):
+        data = {
+            "observer": {"latitude_deg": 0, "longitude_deg": 0},
+            "imu": {
+                "fusion_enabled": True,
+                "fusion_sample_rate_hz": "100",
+                "fusion_time_constant_s": "0.1",
+                "gyroscope_bias_dps": [1, 2, 3],
+                "gyroscope_signs": [1, -1, -1],
+            },
+        }
+
+        config = config_from_dict(data)
+
+        self.assertEqual(config.imu["fusion_sample_rate_hz"], 100.0)
+        self.assertEqual(config.imu["gyroscope_bias_dps"], (1.0, 2.0, 3.0))
+
+    def test_requires_bias_when_fusion_is_enabled(self):
+        with self.assertRaisesRegex(ValueError, "gyroscope_bias_dps"):
+            config_from_dict(
+                {
+                    "observer": {"latitude_deg": 0, "longitude_deg": 0},
+                    "imu": {"fusion_enabled": True},
+                }
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

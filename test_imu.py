@@ -1,4 +1,8 @@
+import json
+import tempfile
+import threading
 import unittest
+from pathlib import Path
 
 from imu import (
     ComplementaryOrientationFilter,
@@ -7,6 +11,7 @@ from imu import (
     Lsm303Sensor,
     Orientation,
     PositionSmoother,
+    TelescopeImu,
     apply_calibration,
     calibrate_gyroscope_bias,
     calibration_from_extrema,
@@ -41,7 +46,63 @@ class FakeGyroscope:
         return next(self.values)
 
 
+class FakeFusionSensor:
+    def __init__(self):
+        self.gyroscope_enabled = False
+        self.gyroscope_reads = 0
+        self.sampled = threading.Event()
+        self.closed = False
+
+    def enable_gyroscope(self):
+        self.gyroscope_enabled = True
+
+    def read_accelerometer(self):
+        return 0, 0, 1000
+
+    def read_magnetometer(self):
+        return 100, 0, 0
+
+    def read_gyroscope(self):
+        self.gyroscope_reads += 1
+        if self.gyroscope_reads >= 3:
+            self.sampled.set()
+        return 0.0, 0.0, 0.0
+
+    def close(self):
+        self.closed = True
+
+
 class ImuTest(unittest.TestCase):
+    def test_telescope_imu_samples_fusion_in_background(self):
+        calibration = {
+            f"{axis}_{suffix}": value
+            for axis in "xyz"
+            for suffix, value in (("offset", 0.0), ("scale", 1.0))
+        }
+        sensor = FakeFusionSensor()
+        with tempfile.TemporaryDirectory() as directory:
+            calibration_file = Path(directory) / "calibration.json"
+            calibration_file.write_text(json.dumps(calibration))
+            telescope_imu = TelescopeImu(
+                calibration_file,
+                {
+                    "fusion_enabled": True,
+                    "fusion_sample_rate_hz": 100,
+                    "fusion_time_constant_s": 0.1,
+                    "gyroscope_bias_dps": (0.0, 0.0, 0.0),
+                },
+                sensor=sensor,
+            )
+            try:
+                self.assertTrue(sensor.sampled.wait(timeout=0.5))
+                orientation = telescope_imu.read_orientation()
+                self.assertAlmostEqual(orientation.heading, 0.0)
+            finally:
+                telescope_imu.close()
+
+        self.assertTrue(sensor.gyroscope_enabled)
+        self.assertTrue(sensor.closed)
+
     def test_complementary_filter_uses_gyro_and_wraps_heading(self):
         orientation_filter = ComplementaryOrientationFilter(
             time_constant_seconds=1.0,

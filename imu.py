@@ -1,5 +1,6 @@
 import json
 import math
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -407,6 +408,7 @@ class ComplementaryOrientationFilter:
 class TelescopeImu:
     def __init__(self, calibration_file, settings, bus_number=1, sensor=None):
         self.settings = settings
+        self.fusion_enabled = bool(settings.get("fusion_enabled", False))
         self.smoother = PositionSmoother(
             time_constant_seconds=float(
                 settings.get("smoothing_time_constant_s", 1.0)
@@ -414,7 +416,50 @@ class TelescopeImu:
             deadband_degrees=float(settings.get("deadband_deg", 0.3)),
         )
         self.calibration = load_calibration(calibration_file)
-        self.sensor = sensor or Lsm303Sensor(bus_number=bus_number)
+        sample_rate = int(settings.get("fusion_sample_rate_hz", 100))
+        self.sensor = sensor or Lsm303Sensor(
+            bus_number=bus_number,
+            accelerometer_rate_hz=(sample_rate if self.fusion_enabled else 10),
+            enable_gyroscope=self.fusion_enabled,
+        )
+        self._fusion_lock = threading.Lock()
+        self._fusion_stop = threading.Event()
+        self._fusion_thread = None
+        self._fusion_error = None
+        self._latest_orientation = None
+
+        if self.fusion_enabled:
+            if sensor is not None:
+                self.sensor.enable_gyroscope()
+            self.fusion_sample_rate = sample_rate
+            self.gyroscope_bias = tuple(
+                float(value)
+                for value in settings["gyroscope_bias_dps"]
+            )
+            self.orientation_filter = ComplementaryOrientationFilter(
+                time_constant_seconds=float(
+                    settings.get("fusion_time_constant_s", 0.1)
+                ),
+                gyro_signs=settings.get(
+                    "gyroscope_signs",
+                    (1.0, -1.0, -1.0),
+                ),
+            )
+            measured = self._read_absolute_orientation()
+            self._latest_orientation = self.orientation_filter.update(
+                measured,
+                remove_gyroscope_bias(
+                    self.sensor.read_gyroscope(),
+                    self.gyroscope_bias,
+                ),
+                0.0,
+            )
+            self._fusion_thread = threading.Thread(
+                target=self._run_fusion,
+                name="imu-fusion",
+                daemon=True,
+            )
+            self._fusion_thread.start()
 
     def read_accelerometer(self):
         return self.sensor.read_accelerometer()
@@ -422,7 +467,7 @@ class TelescopeImu:
     def read_magnetometer(self):
         return self.sensor.read_magnetometer()
 
-    def read_orientation(self):
+    def _read_absolute_orientation(self):
         acc_x, acc_y, acc_z = self.read_accelerometer()
         raw_x, raw_y, raw_z = self.read_magnetometer()
         corrected = apply_calibration(
@@ -436,6 +481,43 @@ class TelescopeImu:
             acc_z,
         )
 
+    def _run_fusion(self):
+        period = 1.0 / self.fusion_sample_rate
+        previous_sample = time.monotonic()
+        next_sample = previous_sample + period
+        try:
+            while not self._fusion_stop.wait(
+                max(0.0, next_sample - time.monotonic())
+            ):
+                sampled_at = time.monotonic()
+                measured = self._read_absolute_orientation()
+                gyroscope = remove_gyroscope_bias(
+                    self.sensor.read_gyroscope(),
+                    self.gyroscope_bias,
+                )
+                fused = self.orientation_filter.update(
+                    measured,
+                    gyroscope,
+                    sampled_at - previous_sample,
+                )
+                with self._fusion_lock:
+                    self._latest_orientation = fused
+                previous_sample = sampled_at
+                next_sample += period
+                if next_sample <= sampled_at:
+                    next_sample = sampled_at + period
+        except Exception as error:
+            with self._fusion_lock:
+                self._fusion_error = error
+
+    def read_orientation(self):
+        if not self.fusion_enabled:
+            return self._read_absolute_orientation()
+        with self._fusion_lock:
+            if self._fusion_error is not None:
+                raise OSError("The IMU fusion worker stopped") from self._fusion_error
+            return self._latest_orientation
+
     def read_position(self):
         orientation = self.read_orientation()
         azimuth, altitude = map_telescope_position(
@@ -446,4 +528,7 @@ class TelescopeImu:
         return azimuth, altitude, orientation
 
     def close(self):
+        self._fusion_stop.set()
+        if self._fusion_thread is not None:
+            self._fusion_thread.join(timeout=2.0)
         self.sensor.close()

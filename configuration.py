@@ -44,6 +44,8 @@ def config_from_dict(data):
         "azimuth_offset_deg",
         "smoothing_time_constant_s",
         "deadband_deg",
+        "fusion_time_constant_s",
+        "fusion_sample_rate_hz",
     ):
         if setting in imu:
             imu[setting] = float(imu[setting])
@@ -51,6 +53,30 @@ def config_from_dict(data):
         raise ValueError("Smoothing time constant cannot be negative.")
     if imu.get("deadband_deg", 0.3) < 0:
         raise ValueError("Smoothing deadband cannot be negative.")
+    if imu.get("fusion_time_constant_s", 0.1) < 0:
+        raise ValueError("Fusion time constant cannot be negative.")
+    if imu.get("fusion_sample_rate_hz", 100.0) <= 0:
+        raise ValueError("Fusion sample rate must be greater than zero.")
+    if imu.get("fusion_sample_rate_hz", 100.0) not in (10.0, 50.0, 100.0):
+        raise ValueError("Fusion sample rate must be 10, 50, or 100 Hz.")
+
+    fusion_enabled = imu.get("fusion_enabled", False)
+    if not isinstance(fusion_enabled, bool):
+        raise ValueError("IMU fusion_enabled must be true or false.")
+    if fusion_enabled and "gyroscope_bias_dps" not in imu:
+        raise ValueError(
+            "IMU gyroscope_bias_dps is required when fusion is enabled."
+        )
+    for setting, default in (
+        ("gyroscope_bias_dps", None),
+        ("gyroscope_signs", (1.0, -1.0, -1.0)),
+    ):
+        values = imu.get(setting, default)
+        if values is None:
+            continue
+        if not isinstance(values, (list, tuple)) or len(values) != 3:
+            raise ValueError(f"IMU {setting} must contain X, Y, and Z values.")
+        imu[setting] = tuple(float(value) for value in values)
 
     return TelescopeConfig(observer=observer, imu=imu)
 
