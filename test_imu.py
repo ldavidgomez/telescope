@@ -1,16 +1,78 @@
 import unittest
 
 from imu import (
+    GYROSCOPE,
+    GYROSCOPE_SENSITIVITY_DPS,
+    Lsm303Sensor,
     Orientation,
     PositionSmoother,
     apply_calibration,
+    calibrate_gyroscope_bias,
     calibration_from_extrema,
     calculate_orientation,
     map_telescope_position,
+    remove_gyroscope_bias,
 )
 
 
+class FakeBus:
+    def __init__(self):
+        self.writes = []
+
+    def read_byte_data(self, address, register):
+        self.asserted_read = (address, register)
+        return 0xD7
+
+    def write_byte_data(self, address, register, value):
+        self.writes.append((address, register, value))
+
+    def read_i2c_block_data(self, address, register, length):
+        if address != GYROSCOPE:
+            raise AssertionError(f"Unexpected address: {address:#x}")
+        return [0xE8, 0x03, 0x18, 0xFC, 0xFF, 0x7F]
+
+
+class FakeGyroscope:
+    def __init__(self, values):
+        self.values = iter(values)
+
+    def read_gyroscope(self):
+        return next(self.values)
+
+
 class ImuTest(unittest.TestCase):
+    def test_reads_l3gd20h_gyroscope_in_degrees_per_second(self):
+        bus = FakeBus()
+        sensor = Lsm303Sensor(bus=bus, enable_gyroscope=True)
+
+        self.assertEqual(sensor.read_gyroscope_raw(), (1000, -1000, 32767))
+        self.assertEqual(bus.asserted_read, (GYROSCOPE, 0x0F))
+        self.assertIn((GYROSCOPE, 0x20, 0x0F), bus.writes)
+        self.assertIn((GYROSCOPE, 0x23, 0x80), bus.writes)
+
+        values = sensor.read_gyroscope()
+        self.assertAlmostEqual(values[0], 1000 * GYROSCOPE_SENSITIVITY_DPS)
+        self.assertAlmostEqual(values[1], -1000 * GYROSCOPE_SENSITIVITY_DPS)
+
+    def test_calibrates_and_removes_gyroscope_bias(self):
+        sensor = FakeGyroscope(
+            [
+                (1.0, -2.0, 0.25),
+                (3.0, -4.0, 0.75),
+            ]
+        )
+        bias = calibrate_gyroscope_bias(
+            sensor,
+            sample_count=2,
+            sample_interval_seconds=0.0,
+            sleep=lambda seconds: None,
+        )
+        self.assertEqual(bias, (2.0, -3.0, 0.5))
+        self.assertEqual(
+            remove_gyroscope_bias((3.0, -1.0, 1.0), bias),
+            (1.0, 2.0, 0.5),
+        )
+
     def test_calibration_from_extrema(self):
         calibration = calibration_from_extrema(
             {"x": -10, "y": -20, "z": -30},

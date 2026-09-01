@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Optional
 
 
 DEFAULT_LCD_DEVICE = "/dev/ttyACM0"
@@ -12,7 +13,7 @@ class LcdDisplay:
 
     def __init__(
         self,
-        device=DEFAULT_LCD_DEVICE,
+        device: Optional[str] = DEFAULT_LCD_DEVICE,
         reconnect_interval_seconds=5.0,
         opener=open,
         clock=time.monotonic,

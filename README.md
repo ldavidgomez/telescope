@@ -24,6 +24,7 @@ normally appears as `/dev/ttyACM0`.
 - `stellarium_protocol.py`: binary Stellarium protocol encoding and decoding.
 - `stellarium_server.py`: network server and application coordination.
 - `calibrate_compass.py`: magnetometer calibration tool.
+- `record_imu.py`: synchronized nine-axis recording and gyro bias measurement.
 - `compass_test.py`, `tilt_test.py`, `display_tilt.py`: hardware diagnostics.
 - `telescope.service`: automatic systemd service.
 
@@ -61,9 +62,15 @@ Run these commands from the Mac:
 make deploy
 make deploy-config
 make service-install
+make service-permissions
 make service-status
 make service-logs
 ```
+
+`make service-permissions` asks for the administrator password once. It installs
+a narrowly scoped sudo rule that lets the `astro` user start, stop, and restart
+only `telescope.service`, and follow only that service's log. It does not grant
+general passwordless administrator access.
 
 After changing the program, deploy and restart it with:
 
@@ -87,6 +94,31 @@ make compass-test
 
 Both commands use the LCD by default. The Python tools also support `--no-lcd`
 when run directly on the Raspberry Pi.
+
+### Nine-axis recording
+
+Record a dataset for comparing the current orientation calculation with future
+sensor-fusion algorithms:
+
+```bash
+make record-imu
+make fetch-imu
+```
+
+Keep the IMU completely still during the one-second gyroscope warm-up and the
+following two seconds while the L3GD20H bias is measured. After that, move it
+through the test orientations.
+The default recording is 30 seconds at 100 Hz. Different values can be selected
+without editing the Makefile:
+
+```bash
+make record-imu RECORD_SECONDS=60 RECORD_RATE=50
+```
+
+The Raspberry Pi writes `imu_recording.csv` with raw and corrected readings for
+all nine axes, plus the current tilt-compensated orientation. A companion
+`imu_recording.json` stores the measured gyro bias and actual sample rate. Both
+files are ignored by Git.
 
 ## Development
 

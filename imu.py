@@ -7,6 +7,14 @@ from pathlib import Path
 
 ACCELEROMETER = 0x19
 MAGNETOMETER = 0x1E
+GYROSCOPE = 0x6B
+GYROSCOPE_IDS = (0xD4, 0xD7)
+GYROSCOPE_SENSITIVITY_DPS = 0.00875
+ACCELEROMETER_RATE_CONTROL = {
+    10: 0x27,
+    50: 0x47,
+    100: 0x57,
+}
 CALIBRATION_KEYS = tuple(
     f"{axis}_{suffix}"
     for axis in "xyz"
@@ -32,6 +40,11 @@ def signed_accelerometer_axis(data, position):
     if value & 0x8000:
         value -= 65536
     return value >> 4
+
+
+def signed_little_endian(low, high):
+    value = low | (high << 8)
+    return value - 65536 if value & 0x8000 else value
 
 
 def load_calibration(calibration_file):
@@ -92,9 +105,22 @@ def calibration_from_extrema(minimum, maximum):
 
 
 class Lsm303Sensor:
-    """Low-level access to the LSM303 accelerometer and magnetometer."""
+    """Low-level access to the LSM303 and optional L3GD20H gyroscope."""
 
-    def __init__(self, bus_number=1, bus=None):
+    def __init__(
+        self,
+        bus_number=1,
+        bus=None,
+        accelerometer_rate_hz=10,
+        enable_gyroscope=False,
+    ):
+        if accelerometer_rate_hz not in ACCELEROMETER_RATE_CONTROL:
+            supported = ", ".join(
+                str(rate) for rate in ACCELEROMETER_RATE_CONTROL
+            )
+            raise ValueError(
+                f"Unsupported accelerometer rate; choose {supported} Hz."
+            )
         if bus is None:
             from smbus import SMBus
 
@@ -103,17 +129,44 @@ class Lsm303Sensor:
         else:
             self._owns_bus = False
         self.bus = bus
-        self._configure()
+        self.gyroscope_enabled = False
+        self.gyroscope_chip_id = None
+        self._configure_lsm303(accelerometer_rate_hz)
+        if enable_gyroscope:
+            self.enable_gyroscope()
 
-    def _configure(self):
-        # Accelerometer: 10 Hz, high-resolution mode, ±2 g range.
-        self.bus.write_byte_data(ACCELEROMETER, 0x20, 0x27)
+    def _configure_lsm303(self, accelerometer_rate_hz):
+        # Accelerometer: high-resolution mode, ±2 g range.
+        self.bus.write_byte_data(
+            ACCELEROMETER,
+            0x20,
+            ACCELEROMETER_RATE_CONTROL[accelerometer_rate_hz],
+        )
         self.bus.write_byte_data(ACCELEROMETER, 0x23, 0x88)
 
         # Magnetometer: 30 Hz, ±1.3 gauss, continuous measurement mode.
         self.bus.write_byte_data(MAGNETOMETER, 0x00, 0x14)
         self.bus.write_byte_data(MAGNETOMETER, 0x01, 0x20)
         self.bus.write_byte_data(MAGNETOMETER, 0x02, 0x00)
+
+    def enable_gyroscope(self):
+        if self.gyroscope_enabled:
+            return
+        chip_id = self.bus.read_byte_data(GYROSCOPE, 0x0F)
+        if chip_id not in GYROSCOPE_IDS:
+            expected = " or ".join(hex(value) for value in GYROSCOPE_IDS)
+            raise RuntimeError(
+                f"Unexpected L3GD20 gyroscope ID {chip_id:#x}; "
+                f"expected {expected}."
+            )
+
+        # 100 Hz, normal mode, all axes enabled.
+        self.bus.write_byte_data(GYROSCOPE, 0x20, 0x00)
+        self.bus.write_byte_data(GYROSCOPE, 0x20, 0x0F)
+        # Block data updates and use the ±250 degrees/second range.
+        self.bus.write_byte_data(GYROSCOPE, 0x23, 0x80)
+        self.gyroscope_chip_id = chip_id
+        self.gyroscope_enabled = True
 
     def read_accelerometer(self):
         data = self.bus.read_i2c_block_data(
@@ -136,6 +189,25 @@ class Lsm303Sensor:
             signed_big_endian(data[2], data[3]),
         )
 
+    def read_gyroscope_raw(self):
+        if not self.gyroscope_enabled:
+            self.enable_gyroscope()
+        data = self.bus.read_i2c_block_data(
+            GYROSCOPE,
+            0x28 | 0x80,
+            6,
+        )
+        return tuple(
+            signed_little_endian(data[position], data[position + 1])
+            for position in (0, 2, 4)
+        )
+
+    def read_gyroscope(self):
+        return tuple(
+            value * GYROSCOPE_SENSITIVITY_DPS
+            for value in self.read_gyroscope_raw()
+        )
+
     def close(self):
         if self._owns_bus and hasattr(self.bus, "close"):
             self.bus.close()
@@ -145,6 +217,31 @@ class Lsm303Sensor:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+
+def calibrate_gyroscope_bias(
+    sensor,
+    sample_count=200,
+    sample_interval_seconds=0.01,
+    sleep=time.sleep,
+):
+    if sample_count <= 0:
+        raise ValueError("Gyroscope calibration needs at least one sample.")
+    if sample_interval_seconds < 0:
+        raise ValueError("Gyroscope sample interval cannot be negative.")
+
+    totals = [0.0, 0.0, 0.0]
+    for sample_index in range(sample_count):
+        values = sensor.read_gyroscope()
+        for axis_index, value in enumerate(values):
+            totals[axis_index] += value
+        if sample_index + 1 < sample_count:
+            sleep(sample_interval_seconds)
+    return tuple(total / sample_count for total in totals)
+
+
+def remove_gyroscope_bias(values, bias):
+    return tuple(value - offset for value, offset in zip(values, bias))
 
 
 def calculate_orientation(mag_x, mag_y, mag_z, acc_x, acc_y, acc_z):

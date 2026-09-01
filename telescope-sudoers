@@ -1,0 +1,2 @@
+# Allow the telescope operator to manage only the telescope service.
+astro ALL=(root) NOPASSWD: /usr/bin/systemctl start telescope.service, /usr/bin/systemctl stop telescope.service, /usr/bin/systemctl restart telescope.service, /usr/bin/journalctl -u telescope.service -f
