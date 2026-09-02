@@ -1,0 +1,10 @@
+list(
+  APPEND
+  PROJECT_SOURCES
+  ${CMAKE_CURRENT_LIST_DIR}/screens/guidance_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/telescope_ui_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/telescope_ui.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/font_body_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/font_heading_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/font_value_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/font_arrow_data.c)

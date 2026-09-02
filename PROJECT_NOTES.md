@@ -67,3 +67,21 @@ Model B+ v1.2 and a OnePlus Nord 2T running Android 14:
   `vcgencmd get_throttled` with the complete telescope hardware connected.
 - Direct software access to the power bank charge is out of scope for the
   current prototype.
+
+## Graphical controller prototype
+
+- A Freenove FNK0104S ESP32-S3 board with a 4-inch 320 x 480 capacitive display
+  has been ordered. The intended installation uses it horizontally at 480 x
+  320.
+- A native LVGL 9.4 simulator now runs on macOS using SDL. It provides a first
+  interactive guidance screen with simulated telescope movement, day/night
+  themes, and brightness buttons.
+- An LVGL Editor XML project lives in the repository-level `ui/` directory so
+  the same 480 x 320 design can be edited visually and exported later.
+- The interface is kept separate from the desktop simulation layer so it can
+  be reused by the ESP32 firmware.
+- The exact Freenove display, touch, backlight, and serial adapters remain
+  pending until the physical board and its current vendor examples arrive.
+- The Raspberry Pi will remain responsible for the IMU, astronomical
+  calculations, and Stellarium protocols. The FNK0104S will render state sent
+  by the Pi and return local touch commands.

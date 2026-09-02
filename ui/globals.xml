@@ -1,0 +1,58 @@
+<globals>
+	<api />
+
+	<consts>
+		<color name="night_bg" value="0x080000" />
+		<color name="night_panel" value="0x160000" />
+		<color name="night_border" value="0x5E1010" />
+		<color name="night_text" value="0xFF5A4F" />
+		<color name="night_muted" value="0xB12B26" />
+		<color name="night_accent" value="0xFF2D20" />
+
+		<color name="day_bg" value="0x0C1720" />
+		<color name="day_panel" value="0x172935" />
+		<color name="day_border" value="0x315568" />
+		<color name="day_text" value="0xEAF7FF" />
+		<color name="day_muted" value="0x91ADBC" />
+		<color name="day_accent" value="0x4DD5FF" />
+	</consts>
+
+	<fonts>
+		<bin name="font_body" src_path="fonts/Montserrat-Regular.ttf" size="16" bpp="2" range="0x20-0x7F" as_file="false" />
+		<bin name="font_heading" src_path="fonts/Montserrat-SemiBold.ttf" size="20" bpp="2" range="0x20-0x7F" as_file="false" />
+		<bin name="font_value" src_path="fonts/Montserrat-SemiBold.ttf" size="28" bpp="2" range="0x20-0x7F" as_file="false" />
+		<bin name="font_arrow" src_path="fonts/Montserrat-SemiBold.ttf" size="36" bpp="2" range="0x20-0x7F" as_file="false" />
+	</fonts>
+
+	<styles>
+		<style name="screen_night" bg_color="#night_bg" bg_opa="100%" text_color="#night_text" text_font="font_body" pad_all="0" />
+		<style name="screen_day" bg_color="#day_bg" bg_opa="100%" text_color="#day_text" text_font="font_body" pad_all="0" />
+
+		<style name="panel_night" bg_color="#night_panel" bg_opa="100%" border_color="#night_border" border_width="1" radius="10" pad_all="10" />
+		<style name="panel_day" bg_color="#day_panel" bg_opa="100%" border_color="#day_border" border_width="1" radius="10" pad_all="10" />
+
+		<style name="muted_night" text_color="#night_muted" />
+		<style name="muted_day" text_color="#day_muted" />
+		<style name="accent_night" text_color="#night_accent" />
+		<style name="accent_day" text_color="#day_accent" />
+
+		<style name="button_night" bg_color="#night_panel" bg_opa="100%" border_color="#night_border" border_width="1" radius="8" text_color="#night_text" />
+		<style name="button_day" bg_color="#day_panel" bg_opa="100%" border_color="#day_border" border_width="1" radius="8" text_color="#day_text" />
+	</styles>
+
+	<subjects>
+		<int name="night_mode" value="1" min_value="0" max_value="1" help="0 = day, 1 = night" />
+		<int name="brightness" value="35" min_value="5" max_value="100" />
+		<string name="target_name" value="ALDEBARAN" />
+		<string name="current_az" value="052.0" />
+		<string name="current_alt" value="+18.0" />
+		<string name="target_az" value="067.4" />
+		<string name="target_alt" value="+31.8" />
+		<string name="az_direction" value="&gt;" />
+		<string name="alt_direction" value="^" />
+		<string name="az_error" value="+15.4 deg" />
+		<string name="alt_error" value="+13.8 deg" />
+		<string name="guide_status" value="GUIDING" />
+		<string name="connection_status" value="STELLARIUM  OK   IMU  OK   PI  OK" />
+	</subjects>
+</globals>

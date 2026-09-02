@@ -1,0 +1,7 @@
+<project name="telescope_ui">
+	<targets>
+		<target name="freenove_fnk0104s">
+			<display width="480" height="320" />
+		</target>
+	</targets>
+</project>

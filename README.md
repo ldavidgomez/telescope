@@ -21,6 +21,8 @@ normally appears as `/dev/ttyACM0`.
 ```text
 telescope/
 ├── telescope/                  Application package
+├── display/                    FNK0104S UI and macOS simulator
+├── ui/                         LVGL Editor XML project
 ├── tools/                      Calibration, recording, and diagnostics
 ├── tests/                      Automated test suite
 ├── systemd/                    Raspberry Pi service installation files
@@ -36,6 +38,31 @@ network and Bluetooth bridge applications. The `tools/` package contains the
 manual hardware utilities, while `tests/` mirrors the application areas it
 checks. Runtime configuration, calibration data, and recordings remain in the
 project root but are intentionally excluded from Git.
+
+## Graphical display simulator
+
+The planned Freenove FNK0104S interface can be developed before the hardware
+arrives. The simulator opens a 480 x 320 LVGL window on macOS and treats mouse
+clicks as capacitive-touch events. Its first guidance screen includes the
+target name, current and target coordinates, separate azimuth and altitude
+arrows, connection state, day/night themes, and brightness controls.
+
+Install its desktop dependencies once and run it from the repository root:
+
+```bash
+brew install cmake sdl2
+make display-run
+```
+
+The first build downloads the pinned LVGL 9.4.0 source into the ignored
+`display/build` directory. Interface code lives in `display/src`; the SDL-only
+entry point lives in `display/simulator`. The eventual ESP32 entry point will
+use the same interface code. The editable LVGL Editor project lives in `ui/`,
+where the extension can discover it from the repository workspace. See
+`display/README.md` and `ui/README.md` for details.
+
+The `display/` and `ui/` directories are excluded from Raspberry Pi deployments
+because they are firmware and design sources for a separate device.
 
 ## Raspberry Pi preparation
 

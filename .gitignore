@@ -1,7 +1,23 @@
 __pycache__/
 *.py[cod]
 .venv/
+
+# C/C++
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+*.dSYM/
+compile_commands.json
+cmake-build-*/
+display/build/
+
+# IDEs
 .vscode/
+.idea/
+
 .DS_Store
 .~
 compass_calibration.json

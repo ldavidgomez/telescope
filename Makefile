@@ -13,6 +13,8 @@ RSYNC = rsync -e 'ssh $(SSH_OPTIONS)'
 RSYNC_EXCLUDES = \
 	--exclude=.git/ \
 	--exclude=.venv/ \
+	--exclude=display/ \
+	--exclude=ui/ \
 	--exclude=__pycache__/ \
 	--exclude='*.pyc' \
 	--exclude=compass_calibration.json \
@@ -29,7 +31,8 @@ RSYNC_EXCLUDES = \
 	service-install service-permissions service-update service-restart service-stop \
 	service-status service-logs bluetooth-install bluetooth-status bluetooth-logs \
 	wifi-watchdog-install wifi-watchdog-status wifi-watchdog-logs \
-	calibrate compass-test record-imu fetch-imu
+	calibrate compass-test record-imu fetch-imu \
+	display-configure display-build display-run display-clean
 
 help:
 	@echo "make deploy   Copy the project to the Raspberry Pi"
@@ -54,6 +57,7 @@ help:
 	@echo "make record-imu  Record synchronized 9-axis IMU data"
 	@echo "make fetch-imu  Copy the latest IMU recording to the Mac"
 	@echo "make replay-imu  Test sensor fusion against the latest recording"
+	@echo "make display-run  Build and run the graphical display simulator"
 	@echo "make test     Run the local automated tests"
 
 deploy:
@@ -122,6 +126,18 @@ fetch-imu:
 
 replay-imu:
 	python3 -m tools.replay_imu
+
+display-configure:
+	cmake -S display -B display/build -DCMAKE_BUILD_TYPE=Debug
+
+display-build: display-configure
+	cmake --build display/build --parallel
+
+display-run: display-build
+	./display/build/telescope-display
+
+display-clean:
+	cmake -E remove_directory display/build
 
 test:
 	python3 -m unittest discover -s tests -v
