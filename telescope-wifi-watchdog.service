@@ -1,0 +1,17 @@
+[Unit]
+Description=Wi-Fi connectivity watchdog for the telescope
+Wants=NetworkManager.service
+After=NetworkManager.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/astro/telescope
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/astro/telescope/wifi_watchdog.py --interface wlan0 --interval 20 --timeout 3 --packets 3 --failures 3 --window 5
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

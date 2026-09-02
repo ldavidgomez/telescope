@@ -26,12 +26,14 @@ normally appears as `/dev/ttyACM0`.
 - `lx200_protocol.py`: LX200 command parsing and coordinate formatting.
 - `stellarium_server.py`: network server and application coordination.
 - `bluetooth_bridge.py`: Bluetooth serial to local LX200 TCP bridge.
+- `wifi_watchdog.py`: recovery for an associated but unresponsive Wi-Fi link.
 - `calibrate_compass.py`: magnetometer calibration tool.
 - `record_imu.py`: synchronized nine-axis recording and gyro bias measurement.
 - `replay_imu.py`: offline evaluation of gyroscope-assisted orientation.
 - `compass_test.py`, `tilt_test.py`, `display_tilt.py`: hardware diagnostics.
 - `telescope.service`: automatic systemd service.
 - `telescope-bluetooth.service`: automatic RFCOMM-to-LX200 bridge service.
+- `telescope-wifi-watchdog.service`: automatic Wi-Fi connectivity watchdog.
 
 ## Raspberry Pi preparation
 
@@ -153,6 +155,38 @@ The Bluetooth bridge is deliberately separate from `telescope.service`. A
 Bluetooth or phone failure therefore cannot stop IMU sampling, LCD guidance, or
 the existing Wi-Fi connections.
 
+### Wi-Fi recovery watchdog
+
+The RTL8188EUS adapter can occasionally remain associated with the access
+point while its data path is no longer usable. Install the independent
+watchdog once:
+
+```bash
+make wifi-watchdog-install
+make wifi-watchdog-status
+```
+
+Every 20 seconds it sends three pings to the current IPv4 gateway explicitly
+through `wlan0`; one reply is enough for that probe to pass. Three failed
+probes among the five most recent checks trigger a
+NetworkManager reconnection of the connection that was active. This also
+detects an intermittent link that occasionally lets one probe through. It does
+not restart the Raspberry Pi,
+`telescope.service`, or the Bluetooth bridge. If Wi-Fi is intentionally
+disconnected or no IPv4 gateway exists, the watchdog waits and lets
+NetworkManager handle normal reconnection.
+
+Follow recovery events with:
+
+```bash
+make wifi-watchdog-logs
+```
+
+The gateway and NetworkManager connection name are discovered dynamically, so
+the same service can be used with a home router or a previously configured
+phone hotspot. A DHCP reservation is still recommended because reconnecting
+may otherwise change the Raspberry Pi address.
+
 ### Field operation with Stellarium Mobile Plus
 
 The validated cable-free data path is:
@@ -252,6 +286,6 @@ make test
 
 Hardware access is delayed until a sensor object is created, so modules and
 tests can be imported on macOS. Runtime messages and code comments are written
-in English. The current suite contains 40 automated tests covering astronomy,
+in English. The current suite contains 48 automated tests covering astronomy,
 configuration, sensor fusion, Stellarium's binary protocol, LX200, LCD
-guidance, recording, and mobile synchronization behavior.
+guidance, recording, mobile synchronization, and Wi-Fi recovery behavior.

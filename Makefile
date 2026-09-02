@@ -28,6 +28,7 @@ RSYNC_EXCLUDES = \
 .PHONY: help deploy deploy-config ssh stellarium test replay-imu \
 	service-install service-permissions service-update service-restart service-stop \
 	service-status service-logs bluetooth-install bluetooth-status bluetooth-logs \
+	wifi-watchdog-install wifi-watchdog-status wifi-watchdog-logs \
 	calibrate compass-test record-imu fetch-imu
 
 help:
@@ -45,6 +46,9 @@ help:
 	@echo "make bluetooth-install  Install the Bluetooth LX200 serial bridge"
 	@echo "make bluetooth-status  Show the Bluetooth bridge status"
 	@echo "make bluetooth-logs  Follow the Bluetooth bridge logs"
+	@echo "make wifi-watchdog-install  Install the Wi-Fi recovery watchdog"
+	@echo "make wifi-watchdog-status  Show the Wi-Fi watchdog status"
+	@echo "make wifi-watchdog-logs  Follow the Wi-Fi watchdog logs"
 	@echo "make calibrate  Stop the service and calibrate the compass"
 	@echo "make compass-test  Stop the service and run the compass test"
 	@echo "make record-imu  Record synchronized 9-axis IMU data"
@@ -93,6 +97,15 @@ bluetooth-status:
 
 bluetooth-logs:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'journalctl -u telescope-bluetooth.service -f'
+
+wifi-watchdog-install: deploy
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/telescope-wifi-watchdog.service /etc/systemd/system/telescope-wifi-watchdog.service && sudo systemctl daemon-reload && sudo systemctl enable telescope-wifi-watchdog.service && sudo systemctl restart telescope-wifi-watchdog.service'
+
+wifi-watchdog-status:
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope-wifi-watchdog.service'
+
+wifi-watchdog-logs:
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'journalctl -u telescope-wifi-watchdog.service -f'
 
 calibrate:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 calibrate_compass.py'

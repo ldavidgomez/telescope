@@ -14,7 +14,7 @@ Model B+ v1.2 and a OnePlus Nord 2T running Android 14:
 - The LCD updates from both desktop and mobile connections and displays
   directional push-to guidance.
 - Bluetooth operation continues when Wi-Fi is disabled on the phone.
-- The automated test suite contains 40 passing tests.
+- The automated test suite contains 48 passing tests.
 
 ## Known operational behavior
 
@@ -32,6 +32,12 @@ Model B+ v1.2 and a OnePlus Nord 2T running Android 14:
   pair again with an interactive `bluetoothctl` agent.
 - `Connected: no` in `bluetoothctl info` is normal while Stellarium is closed;
   RFCOMM connects only while the app is using the telescope.
+- The RTL8188EUS adapter has been observed remaining associated with a strong
+  signal and a valid DHCP lease while its IPv4 data path is unresponsive. The
+  independent `telescope-wifi-watchdog.service` checks the current gateway
+  through `wlan0` and reconnects the active NetworkManager profile after three
+  failures among the five most recent probes. It does not restart the telescope
+  or Bluetooth services.
 
 ## Pending power bank test
 
