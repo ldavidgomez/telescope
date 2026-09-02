@@ -55,3 +55,15 @@ Model B+ v1.2 and a OnePlus Nord 2T running Android 14:
 - Run `vcgencmd get_throttled` after startup and again after several hours.
   The expected result is `throttled=0x0`.
 - Check that the power bank does not switch itself off under a low load.
+
+## Future battery telemetry
+
+- Consider an inline USB meter that records accumulated Wh, current, voltage,
+  and elapsed time.
+- Calibrate the power bank's usable output energy before estimating a remaining
+  percentage; its advertised 20,000 mAh rating refers to the internal cell
+  voltage, not directly to the regulated 5 V output.
+- Confirm that the meter does not introduce undervoltage by checking
+  `vcgencmd get_throttled` with the complete telescope hardware connected.
+- Direct software access to the power bank charge is out of scope for the
+  current prototype.
