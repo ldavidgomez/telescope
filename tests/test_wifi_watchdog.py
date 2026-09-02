@@ -3,7 +3,7 @@ import unittest
 from collections import deque
 from unittest.mock import call, Mock
 
-from wifi_watchdog import (
+from telescope.wifi_watchdog import (
     can_reach,
     get_active_connection,
     get_default_gateway,

@@ -4,7 +4,7 @@ import threading
 import unittest
 from pathlib import Path
 
-from imu import (
+from telescope.imu import (
     ComplementaryOrientationFilter,
     GYROSCOPE,
     GYROSCOPE_SENSITIVITY_DPS,

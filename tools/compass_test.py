@@ -4,8 +4,8 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from display import DEFAULT_LCD_DEVICE, LcdDisplay
-from imu import (
+from telescope.display import DEFAULT_LCD_DEVICE, LcdDisplay
+from telescope.imu import (
     Lsm303Sensor,
     apply_calibration,
     calculate_orientation,
@@ -13,10 +13,9 @@ from imu import (
 )
 
 
-DEFAULT_CALIBRATION_FILE = Path(__file__).with_name(
-    "compass_calibration.json"
-)
-DEFAULT_LOG_FILE = Path(__file__).with_name("compass_test.csv")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CALIBRATION_FILE = PROJECT_ROOT / "compass_calibration.json"
+DEFAULT_LOG_FILE = PROJECT_ROOT / "compass_test.csv"
 
 
 def parse_arguments():

@@ -66,13 +66,13 @@ ssh:
 	$(SSH) $(PI_USER)@$(PI_HOST)
 
 stellarium:
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'cd $(PI_DIR) && python3 stellarium_server.py'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'cd $(PI_DIR) && python3 -m telescope.stellarium_server'
 
 service-install: deploy
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/telescope.service /etc/systemd/system/telescope.service && sudo systemctl daemon-reload && sudo systemctl enable --now telescope.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/systemd/telescope.service /etc/systemd/system/telescope.service && sudo systemctl daemon-reload && sudo systemctl enable telescope.service && sudo systemctl restart telescope.service'
 
 service-permissions: deploy
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo visudo -cf $(PI_DIR)/telescope-sudoers && sudo install -o root -g root -m 0440 $(PI_DIR)/telescope-sudoers /etc/sudoers.d/telescope && sudo visudo -cf /etc/sudoers.d/telescope'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo visudo -cf $(PI_DIR)/systemd/telescope-sudoers && sudo install -o root -g root -m 0440 $(PI_DIR)/systemd/telescope-sudoers /etc/sudoers.d/telescope && sudo visudo -cf /etc/sudoers.d/telescope'
 
 service-update: deploy
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n systemctl restart telescope.service'
@@ -90,7 +90,7 @@ service-logs:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo -n journalctl -u telescope.service -f'
 
 bluetooth-install: deploy
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -d -m 0755 /etc/systemd/system/bluetooth.service.d && sudo install -m 0644 $(PI_DIR)/bluetooth-compat.conf /etc/systemd/system/bluetooth.service.d/compat.conf && sudo install -m 0644 $(PI_DIR)/telescope-bluetooth.service /etc/systemd/system/telescope-bluetooth.service && sudo systemctl daemon-reload && sudo systemctl restart bluetooth.service && sudo systemctl enable --now telescope-bluetooth.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -d -m 0755 /etc/systemd/system/bluetooth.service.d && sudo install -m 0644 $(PI_DIR)/systemd/bluetooth-compat.conf /etc/systemd/system/bluetooth.service.d/compat.conf && sudo install -m 0644 $(PI_DIR)/systemd/telescope-bluetooth.service /etc/systemd/system/telescope-bluetooth.service && sudo systemctl daemon-reload && sudo systemctl restart bluetooth.service && sudo systemctl enable telescope-bluetooth.service && sudo systemctl restart telescope-bluetooth.service'
 
 bluetooth-status:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope-bluetooth.service'
@@ -99,7 +99,7 @@ bluetooth-logs:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'journalctl -u telescope-bluetooth.service -f'
 
 wifi-watchdog-install: deploy
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/telescope-wifi-watchdog.service /etc/systemd/system/telescope-wifi-watchdog.service && sudo systemctl daemon-reload && sudo systemctl enable telescope-wifi-watchdog.service && sudo systemctl restart telescope-wifi-watchdog.service'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'sudo install -m 0644 $(PI_DIR)/systemd/telescope-wifi-watchdog.service /etc/systemd/system/telescope-wifi-watchdog.service && sudo systemctl daemon-reload && sudo systemctl enable telescope-wifi-watchdog.service && sudo systemctl restart telescope-wifi-watchdog.service'
 
 wifi-watchdog-status:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'systemctl status --no-pager telescope-wifi-watchdog.service'
@@ -108,20 +108,20 @@ wifi-watchdog-logs:
 	$(SSH) -t $(PI_USER)@$(PI_HOST) 'journalctl -u telescope-wifi-watchdog.service -f'
 
 calibrate:
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 calibrate_compass.py'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 -m tools.calibrate_compass'
 
 compass-test:
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 compass_test.py'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 -m tools.compass_test'
 
 record-imu:
-	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 record_imu.py --duration $(RECORD_SECONDS) --sample-rate $(RECORD_RATE)'
+	$(SSH) -t $(PI_USER)@$(PI_HOST) 'set -e; sudo -n systemctl stop telescope.service; trap "sudo -n systemctl start telescope.service" EXIT; cd $(PI_DIR); python3 -m tools.record_imu --duration $(RECORD_SECONDS) --sample-rate $(RECORD_RATE)'
 
 fetch-imu:
 	$(RSYNC) -av $(PI_USER)@$(PI_HOST):$(PI_DIR)/imu_recording.csv ./
 	$(RSYNC) -av $(PI_USER)@$(PI_HOST):$(PI_DIR)/imu_recording.json ./
 
 replay-imu:
-	python3 replay_imu.py
+	python3 -m tools.replay_imu
 
 test:
-	python3 -m unittest discover -v
+	python3 -m unittest discover -s tests -v

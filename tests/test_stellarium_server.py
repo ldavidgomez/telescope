@@ -2,7 +2,7 @@ import struct
 import unittest
 from unittest.mock import Mock, call
 
-from stellarium_protocol import (
+from telescope.stellarium_protocol import (
     POSITION_MESSAGE_LENGTH,
     current_position_message,
     decode_dec,
@@ -11,8 +11,9 @@ from stellarium_protocol import (
     encode_dec,
     encode_ra,
 )
-from stellarium_server import (
+from telescope.stellarium_server import (
     Lx200RequestHandler,
+    TelescopeServer,
     format_guidance_line,
     shortest_angle,
 )
@@ -120,6 +121,38 @@ class StellariumProtocolTest(unittest.TestCase):
         handler.process_commands()
 
         handler.server.telescope.update_display.assert_called_once_with()
+
+    def test_lcd_refresh_reads_position_without_a_client(self):
+        server = object.__new__(TelescopeServer)
+        server.display_interval = 0.5
+        server.read_current_position = Mock()
+        server.update_display = Mock()
+        server.report_hardware_failure = Mock()
+        server.backlight_controller = None
+        stop_event = Mock()
+        stop_event.wait.side_effect = (False, True)
+
+        server.refresh_display_until_stopped(stop_event)
+
+        stop_event.wait.assert_has_calls([call(0.5), call(0.5)])
+        server.read_current_position.assert_called_once_with()
+        server.update_display.assert_called_once_with(force=True)
+        server.report_hardware_failure.assert_not_called()
+
+    def test_lcd_refresh_stops_after_an_imu_failure(self):
+        server = object.__new__(TelescopeServer)
+        server.display_interval = 0.5
+        server.read_current_position = Mock(side_effect=OSError("I2C failed"))
+        server.update_display = Mock()
+        server.report_hardware_failure = Mock()
+        server.backlight_controller = None
+        stop_event = Mock()
+        stop_event.wait.return_value = False
+
+        server.refresh_display_until_stopped(stop_event)
+
+        server.report_hardware_failure.assert_called_once()
+        server.update_display.assert_not_called()
 
 
 if __name__ == "__main__":

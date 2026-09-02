@@ -18,22 +18,24 @@ normally appears as `/dev/ttyACM0`.
 
 ## Project layout
 
-- `astronomy.py`: J2000 and horizontal coordinate conversion.
-- `configuration.py`: configuration loading and validation.
-- `imu.py`: sensor access, calibration, orientation, mapping, and smoothing.
-- `display.py`: fault-tolerant serial LCD access.
-- `stellarium_protocol.py`: binary Stellarium protocol encoding and decoding.
-- `lx200_protocol.py`: LX200 command parsing and coordinate formatting.
-- `stellarium_server.py`: network server and application coordination.
-- `bluetooth_bridge.py`: Bluetooth serial to local LX200 TCP bridge.
-- `wifi_watchdog.py`: recovery for an associated but unresponsive Wi-Fi link.
-- `calibrate_compass.py`: magnetometer calibration tool.
-- `record_imu.py`: synchronized nine-axis recording and gyro bias measurement.
-- `replay_imu.py`: offline evaluation of gyroscope-assisted orientation.
-- `compass_test.py`, `tilt_test.py`, `display_tilt.py`: hardware diagnostics.
-- `telescope.service`: automatic systemd service.
-- `telescope-bluetooth.service`: automatic RFCOMM-to-LX200 bridge service.
-- `telescope-wifi-watchdog.service`: automatic Wi-Fi connectivity watchdog.
+```text
+telescope/
+├── telescope/                  Application package
+├── tools/                      Calibration, recording, and diagnostics
+├── tests/                      Automated test suite
+├── systemd/                    Raspberry Pi service installation files
+├── Makefile                    Deployment and operating commands
+├── telescope_config.example.json
+├── README.md
+└── PROJECT_NOTES.md
+```
+
+The `telescope/` package contains sensor access, orientation calculation,
+astronomical conversion, LCD handling, both telescope protocols, and the
+network and Bluetooth bridge applications. The `tools/` package contains the
+manual hardware utilities, while `tests/` mirrors the application areas it
+checks. Runtime configuration, calibration data, and recordings remain in the
+project root but are intentionally excluded from Git.
 
 ## Raspberry Pi preparation
 
@@ -65,13 +67,29 @@ Important IMU settings:
 - `fusion_time_constant_s`: absolute-sensor correction time; `0.1` is the
   measured starting point for this telescope.
 - `gyroscope_bias_dps`: stationary X, Y, and Z bias measured by
-  `record_imu.py`.
+  `tools/record_imu.py`.
 - `gyroscope_signs`: maps the board axes to roll, pitch, and heading rates.
 
 Fusion runs in a background sampling thread, so Stellarium can keep its lower
 network update rate without losing fast gyroscope movement. Set
 `fusion_enabled` to `false` to return immediately to the original
 accelerometer-and-magnetometer calculation.
+
+Important display settings:
+
+- `mode`: `auto` follows solar altitude; `day` and `night` are manual
+  overrides useful for testing.
+- `night_sun_altitude_deg`: enters night mode below this altitude; the default
+  is `-6`, the end of civil twilight.
+- `day_sun_altitude_deg`: returns to day mode above this altitude; the default
+  is `-4`, providing hysteresis around twilight.
+- `day_rgb` and `night_rgb`: red, green, and blue values from 0 to 255.
+- `day_brightness` and `night_brightness`: backlight brightness from 0 to 255.
+
+The default day mode is white at full brightness. Night mode uses red at a
+reduced brightness of 80. The backpack is updated only when the mode changes,
+not on every LCD refresh. When Stellarium Mobile synchronizes a new location,
+the automatic calculation immediately starts using that observer position.
 
 ## Deploy and operate
 
@@ -226,6 +244,10 @@ bluetoothctl info PHONE_BLUETOOTH_ADDRESS
 When a target is selected, the LCD guidance line uses `<` and `>` for azimuth,
 `^` and `v` for altitude, and shows `OK` when an axis is within 0.5 degrees of
 the target. The remaining angular distance stays visible beside each symbol.
+An independent refresh loop updates the position and guidance every 0.5
+seconds, even when Stellarium is disconnected or is not polling the telescope.
+The same loop checks solar altitude and changes the RGB backlight automatically
+at twilight.
 
 ## Calibration and diagnostics
 
@@ -239,7 +261,11 @@ make compass-test
 ```
 
 Both commands use the LCD by default. The Python tools also support `--no-lcd`
-when run directly on the Raspberry Pi.
+when run directly from the project root on the Raspberry Pi, for example:
+
+```bash
+python3 -m tools.compass_test --no-lcd
+```
 
 ### Nine-axis recording
 
@@ -286,6 +312,6 @@ make test
 
 Hardware access is delayed until a sensor object is created, so modules and
 tests can be imported on macOS. Runtime messages and code comments are written
-in English. The current suite contains 48 automated tests covering astronomy,
+in English. The current suite contains 56 automated tests covering astronomy,
 configuration, sensor fusion, Stellarium's binary protocol, LX200, LCD
 guidance, recording, mobile synchronization, and Wi-Fi recovery behavior.

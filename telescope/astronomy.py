@@ -120,6 +120,44 @@ def greenwich_mean_sidereal_time(target_julian_date):
     ) % 360.0
 
 
+def sun_altitude(latitude_degrees, longitude_degrees, moment=None):
+    """Return the Sun's approximate geometric altitude in degrees."""
+    target_julian_date = julian_date(moment)
+    days_since_j2000 = target_julian_date - J2000_JULIAN_DATE
+    mean_longitude = (280.460 + 0.9856474 * days_since_j2000) % 360.0
+    mean_anomaly = math.radians(
+        (357.528 + 0.9856003 * days_since_j2000) % 360.0
+    )
+    ecliptic_longitude = math.radians(
+        mean_longitude
+        + 1.915 * math.sin(mean_anomaly)
+        + 0.020 * math.sin(2.0 * mean_anomaly)
+    )
+    obliquity = math.radians(23.439 - 0.0000004 * days_since_j2000)
+
+    right_ascension = math.atan2(
+        math.cos(obliquity) * math.sin(ecliptic_longitude),
+        math.cos(ecliptic_longitude),
+    )
+    declination = math.asin(
+        math.sin(obliquity) * math.sin(ecliptic_longitude)
+    )
+    local_sidereal_time = math.radians(
+        (
+            greenwich_mean_sidereal_time(target_julian_date)
+            + longitude_degrees
+        )
+        % 360.0
+    )
+    hour_angle = local_sidereal_time - right_ascension
+    latitude = math.radians(latitude_degrees)
+    altitude = math.asin(
+        math.sin(latitude) * math.sin(declination)
+        + math.cos(latitude) * math.cos(declination) * math.cos(hour_angle)
+    )
+    return math.degrees(altitude)
+
+
 def j2000_to_horizontal(
     ra_degrees,
     dec_degrees,

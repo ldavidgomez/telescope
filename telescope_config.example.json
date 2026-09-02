@@ -4,6 +4,15 @@
     "longitude_deg": 0.0,
     "altitude_m": 0
   },
+  "display": {
+    "mode": "auto",
+    "night_sun_altitude_deg": -6.0,
+    "day_sun_altitude_deg": -4.0,
+    "day_rgb": [255, 255, 255],
+    "day_brightness": 255,
+    "night_rgb": [255, 0, 0],
+    "night_brightness": 80
+  },
   "imu": {
     "calibration_file": "compass_calibration.json",
     "altitude_source": "pitch",

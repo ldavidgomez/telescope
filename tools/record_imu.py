@@ -5,8 +5,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from display import DEFAULT_LCD_DEVICE, LcdDisplay
-from imu import (
+from telescope.display import DEFAULT_LCD_DEVICE, LcdDisplay
+from telescope.imu import (
     GYROSCOPE_SENSITIVITY_DPS,
     Lsm303Sensor,
     apply_calibration,
@@ -20,11 +20,10 @@ from imu import (
 DEFAULT_DURATION_SECONDS = 30.0
 DEFAULT_SAMPLE_RATE_HZ = 100
 DEFAULT_GYROSCOPE_WARMUP_SECONDS = 1.0
-DEFAULT_CALIBRATION_FILE = Path(__file__).with_name(
-    "compass_calibration.json"
-)
-DEFAULT_OUTPUT_FILE = Path(__file__).with_name("imu_recording.csv")
-DEFAULT_METADATA_FILE = Path(__file__).with_name("imu_recording.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CALIBRATION_FILE = PROJECT_ROOT / "compass_calibration.json"
+DEFAULT_OUTPUT_FILE = PROJECT_ROOT / "imu_recording.csv"
+DEFAULT_METADATA_FILE = PROJECT_ROOT / "imu_recording.json"
 
 CSV_FIELDS = [
     "unix_time_ns",

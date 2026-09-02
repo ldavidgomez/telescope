@@ -1,6 +1,6 @@
 import unittest
 
-from lx200_protocol import (
+from telescope.lx200_protocol import (
     Lx200Session,
     format_dec,
     format_ra,

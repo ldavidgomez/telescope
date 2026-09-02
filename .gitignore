@@ -10,4 +10,5 @@ compass_test.csv
 imu_recording.csv
 imu_recording.json
 imu_replay.csv
+night_mode_capture.txt
 telescope_config.json

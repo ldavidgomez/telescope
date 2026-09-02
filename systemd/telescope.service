@@ -11,7 +11,7 @@ SupplementaryGroups=i2c dialout
 WorkingDirectory=/home/astro/telescope
 Environment=PYTHONUNBUFFERED=1
 ExecStartPre=/bin/sh -c 'for attempt in $(seq 1 30); do [ -e /dev/i2c-1 ] && exit 0; sleep 1; done; exit 1'
-ExecStart=/usr/bin/python3 /home/astro/telescope/stellarium_server.py --config /home/astro/telescope/telescope_config.json
+ExecStart=/usr/bin/python3 -m telescope.stellarium_server --config /home/astro/telescope/telescope_config.json
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10

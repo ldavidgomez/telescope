@@ -1,7 +1,12 @@
 import unittest
 from datetime import datetime, timezone
 
-from astronomy import horizontal_to_j2000, j2000_to_horizontal, julian_date
+from telescope.astronomy import (
+    horizontal_to_j2000,
+    j2000_to_horizontal,
+    julian_date,
+    sun_altitude,
+)
 
 
 class AstronomyTest(unittest.TestCase):
@@ -32,6 +37,13 @@ class AstronomyTest(unittest.TestCase):
 
         self.assertAlmostEqual(actual[0], expected[0], places=6)
         self.assertAlmostEqual(actual[1], expected[1], places=6)
+
+    def test_sun_altitude_tracks_day_and_night(self):
+        noon = datetime(2026, 3, 20, 12, tzinfo=timezone.utc)
+        midnight = datetime(2026, 3, 20, 0, tzinfo=timezone.utc)
+
+        self.assertGreater(sun_altitude(0.0, 0.0, noon), 88.0)
+        self.assertLess(sun_altitude(0.0, 0.0, midnight), -88.0)
 
 
 if __name__ == "__main__":

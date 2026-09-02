@@ -1,6 +1,6 @@
 import unittest
 
-from configuration import config_from_dict
+from telescope.configuration import config_from_dict
 
 
 class ConfigurationTest(unittest.TestCase):
@@ -21,6 +21,8 @@ class ConfigurationTest(unittest.TestCase):
         self.assertEqual(config.observer.coordinates, (36.4753, -6.1946))
         self.assertEqual(config.observer.altitude_m, 8.0)
         self.assertEqual(config.imu["deadband_deg"], 0.3)
+        self.assertEqual(config.display["mode"], "auto")
+        self.assertEqual(config.display["night_rgb"], (255, 0, 0))
 
     def test_rejects_invalid_observer_latitude(self):
         with self.assertRaises(ValueError):
@@ -57,6 +59,36 @@ class ConfigurationTest(unittest.TestCase):
                 {
                     "observer": {"latitude_deg": 0, "longitude_deg": 0},
                     "imu": {"fusion_enabled": True},
+                }
+            )
+
+    def test_loads_display_settings(self):
+        config = config_from_dict(
+            {
+                "observer": {"latitude_deg": 0, "longitude_deg": 0},
+                "imu": {},
+                "display": {
+                    "mode": "night",
+                    "night_rgb": [120, 0, 0],
+                    "night_brightness": "40",
+                },
+            }
+        )
+
+        self.assertEqual(config.display["mode"], "night")
+        self.assertEqual(config.display["night_rgb"], (120, 0, 0))
+        self.assertEqual(config.display["night_brightness"], 40)
+
+    def test_rejects_overlapping_twilight_thresholds(self):
+        with self.assertRaisesRegex(ValueError, "lower than day"):
+            config_from_dict(
+                {
+                    "observer": {"latitude_deg": 0, "longitude_deg": 0},
+                    "imu": {},
+                    "display": {
+                        "night_sun_altitude_deg": -4,
+                        "day_sun_altitude_deg": -6,
+                    },
                 }
             )
 

@@ -18,6 +18,54 @@ class Observer:
 class TelescopeConfig:
     observer: Observer
     imu: dict
+    display: dict
+
+
+DEFAULT_DISPLAY_SETTINGS = {
+    "mode": "auto",
+    "night_sun_altitude_deg": -6.0,
+    "day_sun_altitude_deg": -4.0,
+    "day_rgb": (255, 255, 255),
+    "day_brightness": 255,
+    "night_rgb": (255, 0, 0),
+    "night_brightness": 80,
+}
+
+
+def display_settings_from_dict(data):
+    settings = dict(DEFAULT_DISPLAY_SETTINGS)
+    settings.update(data)
+
+    if settings["mode"] not in ("auto", "day", "night"):
+        raise ValueError("Display mode must be 'auto', 'day', or 'night'.")
+
+    for name in ("night_sun_altitude_deg", "day_sun_altitude_deg"):
+        settings[name] = float(settings[name])
+        if not -90.0 <= settings[name] <= 90.0:
+            raise ValueError(f"Display {name} must be between -90 and +90.")
+    if (
+        settings["night_sun_altitude_deg"]
+        >= settings["day_sun_altitude_deg"]
+    ):
+        raise ValueError(
+            "Display night Sun altitude must be lower than day Sun altitude."
+        )
+
+    for name in ("day_rgb", "night_rgb"):
+        values = settings[name]
+        if not isinstance(values, (list, tuple)) or len(values) != 3:
+            raise ValueError(f"Display {name} must contain red, green, and blue.")
+        values = tuple(int(value) for value in values)
+        if any(value < 0 or value > 255 for value in values):
+            raise ValueError(f"Display {name} values must be between 0 and 255.")
+        settings[name] = values
+
+    for name in ("day_brightness", "night_brightness"):
+        settings[name] = int(settings[name])
+        if not 0 <= settings[name] <= 255:
+            raise ValueError(f"Display {name} must be between 0 and 255.")
+
+    return settings
 
 
 def config_from_dict(data):
@@ -78,7 +126,8 @@ def config_from_dict(data):
             raise ValueError(f"IMU {setting} must contain X, Y, and Z values.")
         imu[setting] = tuple(float(value) for value in values)
 
-    return TelescopeConfig(observer=observer, imu=imu)
+    display = display_settings_from_dict(data.get("display", {}))
+    return TelescopeConfig(observer=observer, imu=imu, display=display)
 
 
 def load_config(config_file):

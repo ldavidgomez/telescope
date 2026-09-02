@@ -3,11 +3,12 @@ import csv
 import math
 from pathlib import Path
 
-from imu import ComplementaryOrientationFilter, Orientation
+from telescope.imu import ComplementaryOrientationFilter, Orientation
 
 
-DEFAULT_INPUT_FILE = Path(__file__).with_name("imu_recording.csv")
-DEFAULT_OUTPUT_FILE = Path(__file__).with_name("imu_replay.csv")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_INPUT_FILE = PROJECT_ROOT / "imu_recording.csv"
+DEFAULT_OUTPUT_FILE = PROJECT_ROOT / "imu_replay.csv"
 
 OUTPUT_FIELDS = [
     "elapsed_s",

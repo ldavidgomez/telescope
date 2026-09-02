@@ -1,7 +1,7 @@
 import math
 import time
 
-from imu import Lsm303Sensor
+from telescope.imu import Lsm303Sensor
 
 
 def tilt_angles(x, y, z):

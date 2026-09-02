@@ -7,12 +7,16 @@ import threading
 import time
 from pathlib import Path
 
-from astronomy import horizontal_to_j2000, j2000_to_horizontal
-from configuration import load_config
-from display import DEFAULT_LCD_DEVICE, LcdDisplay
-from imu import TelescopeImu
-from lx200_protocol import Lx200Session
-from stellarium_protocol import (
+from telescope.astronomy import horizontal_to_j2000, j2000_to_horizontal
+from telescope.configuration import load_config
+from telescope.display import (
+    DEFAULT_LCD_DEVICE,
+    LcdDisplay,
+    SolarBacklightController,
+)
+from telescope.imu import TelescopeImu
+from telescope.lx200_protocol import Lx200Session
+from telescope.stellarium_protocol import (
     current_position_message,
     decode_goto_message,
 )
@@ -22,8 +26,10 @@ DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 10001
 DEFAULT_LX200_PORT = 10002
 DEFAULT_INTERVAL_SECONDS = 0.5
+DEFAULT_DISPLAY_INTERVAL_SECONDS = 0.5
 DEFAULT_GUIDANCE_TOLERANCE_DEGREES = 0.5
-DEFAULT_CONFIG_FILE = Path(__file__).with_name("telescope_config.json")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CONFIG_FILE = PROJECT_ROOT / "telescope_config.json"
 LOGGER = logging.getLogger(__name__)
 
 # Vega (J2000) provides an easy object to search for during the connection test.
@@ -69,6 +75,8 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         observer,
         display,
         position_provider=None,
+        display_interval=DEFAULT_DISPLAY_INTERVAL_SECONDS,
+        backlight_controller=None,
     ):
         super().__init__(address, handler)
         self.ra_degrees = ra_degrees
@@ -76,13 +84,16 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         self.interval = interval
         self.observer = observer
         self.display = display
+        self.display_interval = display_interval
         self.position_provider = position_provider
+        self.backlight_controller = backlight_controller
         self.target = None
         self.current_horizontal = None
         self.last_display_update = 0.0
         self.print_lock = threading.Lock()
         self.target_lock = threading.Lock()
         self.position_lock = threading.Lock()
+        self.display_lock = threading.Lock()
         self.fatal_error = None
 
     def log(self, message):
@@ -106,6 +117,8 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
     def set_observer(self, observer):
         self.observer = observer
+        if self.backlight_controller is not None:
+            self.backlight_controller.set_observer(observer)
         self.log(
             "Observer updated by LX200: "
             f"{observer[0]:+.4f} deg, {observer[1]:+.4f} deg"
@@ -139,26 +152,42 @@ class TelescopeServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
             target = self.target
             self.last_display_update = now
 
-        if self.current_horizontal is None:
+        with self.position_lock:
+            current_horizontal = self.current_horizontal
+        if current_horizontal is None:
             return
-        current_azimuth, current_altitude = self.current_horizontal
+        current_azimuth, current_altitude = current_horizontal
         current_line = f"AZ{current_azimuth:05.1f} AL{current_altitude:+05.1f}"
 
-        if target is None:
-            self.display.show(current_line, "Waiting target")
-            return
+        with self.display_lock:
+            if target is None:
+                self.display.show(current_line, "Waiting target")
+                return
 
-        target_azimuth, target_altitude = j2000_to_horizontal(
-            *target,
-            *self.observer,
-        )
-        delta_azimuth = shortest_angle(target_azimuth, current_azimuth)
-        delta_altitude = target_altitude - current_altitude
-        self.display.show(
-            current_line,
-            format_guidance_line(delta_azimuth, delta_altitude),
-        )
+            target_azimuth, target_altitude = j2000_to_horizontal(
+                *target,
+                *self.observer,
+            )
+            delta_azimuth = shortest_angle(target_azimuth, current_azimuth)
+            delta_altitude = target_altitude - current_altitude
+            self.display.show(
+                current_line,
+                format_guidance_line(delta_azimuth, delta_altitude),
+            )
         return target_azimuth, target_altitude
+
+    def refresh_display_until_stopped(self, stop_event):
+        """Keep the LCD current even when no telescope client is polling."""
+        while not stop_event.wait(self.display_interval):
+            try:
+                self.read_current_position()
+            except (OSError, ValueError, KeyError) as error:
+                self.report_hardware_failure(error)
+                return
+            if self.backlight_controller is not None:
+                with self.display_lock:
+                    self.backlight_controller.update()
+            self.update_display(force=True)
 
 
 class TelescopeRequestHandler(socketserver.BaseRequestHandler):
@@ -353,6 +382,12 @@ def parse_arguments():
         default=DEFAULT_INTERVAL_SECONDS,
         help="Position update interval in seconds.",
     )
+    parser.add_argument(
+        "--display-interval",
+        type=float,
+        default=DEFAULT_DISPLAY_INTERVAL_SECONDS,
+        help="Autonomous LCD refresh interval in seconds.",
+    )
     return parser.parse_args()
 
 
@@ -366,10 +401,18 @@ def main():
         raise SystemExit("Declination must be between -90 and +90 degrees.")
     if args.interval <= 0:
         raise SystemExit("The update interval must be greater than zero.")
+    if args.display_interval <= 0:
+        raise SystemExit("The display interval must be greater than zero.")
 
     config = load_config(args.config)
     observer = config.observer.coordinates
     display = LcdDisplay(args.lcd)
+    backlight_controller = SolarBacklightController(
+        display,
+        observer,
+        config.display,
+    )
+    backlight_controller.update()
     display.show("Stellarium", "Starting IMU")
 
     position_provider = None
@@ -392,6 +435,8 @@ def main():
             observer,
             display,
             position_provider,
+            args.display_interval,
+            backlight_controller,
         ) as server:
             lx200_server = None
             lx200_thread = None
@@ -406,6 +451,14 @@ def main():
                     daemon=True,
                 )
                 lx200_thread.start()
+            display_stop = threading.Event()
+            display_thread = threading.Thread(
+                target=server.refresh_display_until_stopped,
+                args=(display_stop,),
+                daemon=True,
+                name="lcd-refresh",
+            )
+            display_thread.start()
             position_mode = "fixed test position" if args.fixed_position else "IMU"
             LOGGER.info(
                 "Stellarium telescope server listening on port %d.",
@@ -432,6 +485,8 @@ def main():
             except KeyboardInterrupt:
                 LOGGER.info("Server stopped.")
             finally:
+                display_stop.set()
+                display_thread.join(timeout=2.0)
                 if lx200_server is not None:
                     lx200_server.shutdown()
                     lx200_server.server_close()

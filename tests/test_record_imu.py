@@ -1,7 +1,7 @@
 import unittest
 
-from imu import Orientation
-from record_imu import CSV_FIELDS, recording_row
+from telescope.imu import Orientation
+from tools.record_imu import CSV_FIELDS, recording_row
 
 
 class ImuRecordingTest(unittest.TestCase):

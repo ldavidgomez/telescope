@@ -6,15 +6,14 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from display import DEFAULT_LCD_DEVICE, LcdDisplay
-from imu import Lsm303Sensor, calibration_from_extrema
+from telescope.display import DEFAULT_LCD_DEVICE, LcdDisplay
+from telescope.imu import Lsm303Sensor, calibration_from_extrema
 
 
 DEFAULT_DURATION_SECONDS = 30.0
-DEFAULT_CALIBRATION_FILE = Path(__file__).with_name(
-    "compass_calibration.json"
-)
-DEFAULT_LOG_FILE = Path(__file__).with_name("compass_calibration.csv")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CALIBRATION_FILE = PROJECT_ROOT / "compass_calibration.json"
+DEFAULT_LOG_FILE = PROJECT_ROOT / "compass_calibration.csv"
 
 
 def parse_arguments():

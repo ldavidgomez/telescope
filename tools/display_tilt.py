@@ -1,9 +1,9 @@
 import argparse
 import time
 
-from display import DEFAULT_LCD_DEVICE, LcdDisplay
-from imu import Lsm303Sensor
-from tilt_test import tilt_angles
+from telescope.display import DEFAULT_LCD_DEVICE, LcdDisplay
+from telescope.imu import Lsm303Sensor
+from tools.tilt_test import tilt_angles
 
 
 def parse_arguments():

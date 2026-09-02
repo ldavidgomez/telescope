@@ -13,8 +13,14 @@ Model B+ v1.2 and a OnePlus Nord 2T running Android 14:
 - The phone can synchronize date, time zone, latitude, and longitude.
 - The LCD updates from both desktop and mobile connections and displays
   directional push-to guidance.
+- The LCD also refreshes directly from the IMU every 0.5 seconds, without
+  depending on a connected Stellarium client.
+- LCD day/night color is controlled locally from solar altitude, with
+  configurable twilight hysteresis and manual overrides.
 - Bluetooth operation continues when Wi-Fi is disabled on the phone.
-- The automated test suite contains 48 passing tests.
+- The automated test suite contains 56 passing tests.
+- The Python source is organized into the `telescope/` application package,
+  `tools/` manual utilities, `tests/`, and `systemd/` deployment files.
 
 ## Known operational behavior
 
