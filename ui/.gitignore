@@ -1,2 +1,5 @@
-preview-build
-preview-bin
+preview-build/
+preview-bin/
+build/
+.cache.json
+project_local.xml

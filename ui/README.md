@@ -15,4 +15,6 @@ The bundled Montserrat font files come from LVGL's official open-project templat
 
 The empty `images` directory is kept in Git because LVGL Editor mounts it during resource conversion even when the interface does not yet use images.
 
+Preview binaries, build directories, editor caches, and the local project file are ignored. XML sources, exported C files, converted font data, and `file_list_gen.cmake` are committed so the firmware remains buildable and reviewable without regenerating the interface first.
+
 The XML follows the format supported by LVGL Editor 1.0.1. The existing desktop simulator remains pinned to LVGL 9.4 until the generated UI is integrated.
