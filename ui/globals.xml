@@ -23,7 +23,6 @@
 		<bin name="font_body" src_path="fonts/Montserrat-Regular.ttf" size="16" bpp="2" range="0x20-0x7F" as_file="false" />
 		<bin name="font_heading" src_path="fonts/Montserrat-SemiBold.ttf" size="20" bpp="2" range="0x20-0x7F" as_file="false" />
 		<bin name="font_value" src_path="fonts/Montserrat-SemiBold.ttf" size="28" bpp="2" range="0x20-0x7F" as_file="false" />
-		<bin name="font_arrow" src_path="fonts/Montserrat-SemiBold.ttf" size="60" bpp="2" range="0x20-0x7F" as_file="false" />
 	</fonts>
 
 	<styles>
@@ -53,7 +52,7 @@
 		<style name="vector_day" bg_color="#day_accent" bg_opa="100%" border_width="0" radius="3" text_color="#day_accent" />
 		<style name="vector_dot_night" bg_color="#night_accent" bg_opa="100%" border_width="0" radius="100" />
 		<style name="vector_dot_day" bg_color="#day_accent" bg_opa="100%" border_width="0" radius="100" />
-		<style name="vector_pivot" transform_pivot_x="0" transform_pivot_y="30" />
+		<style name="vector_line_pivot" transform_pivot_x="0" transform_pivot_y="2" />
 		<style name="vector_angle_e" transform_rotation="0" />
 		<style name="vector_angle_se" transform_rotation="450" />
 		<style name="vector_angle_s" transform_rotation="900" />
@@ -62,6 +61,11 @@
 		<style name="vector_angle_nw" transform_rotation="2250" />
 		<style name="vector_angle_n" transform_rotation="2700" />
 		<style name="vector_angle_ne" transform_rotation="3150" />
+		<style name="vector_coarse" transform_scale_x="256" transform_scale_y="256" />
+		<style name="vector_fine" transform_scale_x="176" transform_scale_y="176" />
+		<style name="vector_aligned" opa="0%" />
+		<style name="state_hidden" opa="0%" />
+		<style name="state_visible" opa="100%" />
 
 		<!-- The desktop preview cannot change a physical backlight. These styles
 		     simulate brightness with a non-interactive black overlay. -->
@@ -90,7 +94,8 @@
 		<string name="az_error" value="+15.4 deg" />
 		<string name="alt_error" value="+13.8 deg" />
 		<int name="guide_sector" value="7" min_value="0" max_value="7" help="0 E, 1 SE, 2 S, 3 SW, 4 W, 5 NW, 6 N, 7 NE" />
-		<string name="guide_status" value="GUIDING" />
+		<int name="guide_stage" value="0" min_value="0" max_value="2" help="0 coarse, 1 fine, 2 aligned" />
+		<string name="guide_status" value="COARSE" />
 		<string name="connection_status" value="STELLARIUM  OK   IMU  OK   PI  OK" />
 	</subjects>
 </globals>

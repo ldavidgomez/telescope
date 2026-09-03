@@ -94,7 +94,7 @@ extern lv_style_t vector_night;
 extern lv_style_t vector_day;
 extern lv_style_t vector_dot_night;
 extern lv_style_t vector_dot_day;
-extern lv_style_t vector_pivot;
+extern lv_style_t vector_line_pivot;
 extern lv_style_t vector_angle_e;
 extern lv_style_t vector_angle_se;
 extern lv_style_t vector_angle_s;
@@ -103,6 +103,11 @@ extern lv_style_t vector_angle_w;
 extern lv_style_t vector_angle_nw;
 extern lv_style_t vector_angle_n;
 extern lv_style_t vector_angle_ne;
+extern lv_style_t vector_coarse;
+extern lv_style_t vector_fine;
+extern lv_style_t vector_aligned;
+extern lv_style_t state_hidden;
+extern lv_style_t state_visible;
 extern lv_style_t brightness_10;
 extern lv_style_t brightness_20;
 extern lv_style_t brightness_30;
@@ -126,8 +131,6 @@ extern lv_font_t * font_heading;
 
 extern lv_font_t * font_value;
 
-extern lv_font_t * font_arrow;
-
 /*----------------
  * Images
  *----------------*/
@@ -148,6 +151,7 @@ extern lv_subject_t alt_direction;
 extern lv_subject_t az_error;
 extern lv_subject_t alt_error;
 extern lv_subject_t guide_sector;
+extern lv_subject_t guide_stage;
 extern lv_subject_t guide_status;
 extern lv_subject_t connection_status;
 

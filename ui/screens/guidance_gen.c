@@ -123,13 +123,17 @@ lv_obj_t * guidance_create(void)
     
     lv_obj_t * lv_obj_5 = lv_obj_create(lv_obj_1);
     lv_obj_set_x(lv_obj_5, 140);
-    lv_obj_set_y(lv_obj_5, 74);
-    lv_obj_set_width(lv_obj_5, 125);
-    lv_obj_set_height(lv_obj_5, 60);
+    lv_obj_set_y(lv_obj_5, 102);
+    lv_obj_set_width(lv_obj_5, 88);
+    lv_obj_set_height(lv_obj_5, 5);
     lv_obj_set_flag(lv_obj_5, LV_OBJ_FLAG_SCROLLABLE, false);
-    lv_obj_add_style(lv_obj_5, &transparent, 0);
-    lv_obj_add_style(lv_obj_5, &vector_pivot, 0);
+    lv_obj_add_style(lv_obj_5, &vector_night, 0);
+    lv_obj_bind_style(lv_obj_5, &vector_day, 0, &night_mode, 0);
+    lv_obj_add_style(lv_obj_5, &vector_line_pivot, 0);
     lv_obj_add_style(lv_obj_5, &vector_angle_ne, 0);
+    lv_obj_add_style(lv_obj_5, &vector_coarse, 0);
+    lv_obj_bind_style(lv_obj_5, &vector_fine, 0, &guide_stage, 1);
+    lv_obj_bind_style(lv_obj_5, &vector_aligned, 0, &guide_stage, 2);
     lv_obj_bind_style(lv_obj_5, &vector_angle_e, 0, &guide_sector, 0);
     lv_obj_bind_style(lv_obj_5, &vector_angle_se, 0, &guide_sector, 1);
     lv_obj_bind_style(lv_obj_5, &vector_angle_s, 0, &guide_sector, 2);
@@ -137,41 +141,37 @@ lv_obj_t * guidance_create(void)
     lv_obj_bind_style(lv_obj_5, &vector_angle_w, 0, &guide_sector, 4);
     lv_obj_bind_style(lv_obj_5, &vector_angle_nw, 0, &guide_sector, 5);
     lv_obj_bind_style(lv_obj_5, &vector_angle_n, 0, &guide_sector, 6);
-    lv_obj_t * lv_obj_6 = lv_obj_create(lv_obj_5);
-    lv_obj_set_x(lv_obj_6, 0);
-    lv_obj_set_y(lv_obj_6, 28);
-    lv_obj_set_width(lv_obj_6, 88);
-    lv_obj_set_height(lv_obj_6, 5);
-    lv_obj_set_flag(lv_obj_6, LV_OBJ_FLAG_SCROLLABLE, false);
-    lv_obj_add_style(lv_obj_6, &vector_night, 0);
-    lv_obj_bind_style(lv_obj_6, &vector_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_4 = lv_label_create(lv_obj_5);
-    lv_obj_set_x(lv_label_4, 77);
-    lv_obj_set_y(lv_label_4, -2);
-    lv_label_set_text(lv_label_4, ">");
-    lv_obj_set_style_text_font(lv_label_4, font_arrow, 0);
+    lv_obj_t * lv_obj_6 = lv_obj_create(lv_obj_1);
+    lv_obj_set_x(lv_obj_6, 134);
+    lv_obj_set_y(lv_obj_6, 98);
+    lv_obj_set_width(lv_obj_6, 12);
+    lv_obj_set_height(lv_obj_6, 12);
+    lv_obj_set_flag(lv_obj_6, LV_OBJ_FLAG_SCROLLABLE, false);
+    lv_obj_add_style(lv_obj_6, &vector_dot_night, 0);
+    lv_obj_bind_style(lv_obj_6, &vector_dot_day, 0, &night_mode, 0);
+    
+    lv_obj_t * lv_label_4 = lv_label_create(lv_obj_1);
+    lv_obj_set_x(lv_label_4, 80);
+    lv_obj_set_y(lv_label_4, 92);
+    lv_obj_set_width(lv_label_4, 120);
+    lv_label_set_text(lv_label_4, "ALIGNED");
+    lv_obj_set_style_text_font(lv_label_4, font_heading, 0);
+    lv_obj_set_style_text_align(lv_label_4, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_add_style(lv_label_4, &state_hidden, 0);
     lv_obj_add_style(lv_label_4, &accent_night, 0);
+    lv_obj_bind_style(lv_label_4, &state_visible, 0, &guide_stage, 2);
     lv_obj_bind_style(lv_label_4, &accent_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_obj_7 = lv_obj_create(lv_obj_1);
-    lv_obj_set_x(lv_obj_7, 134);
-    lv_obj_set_y(lv_obj_7, 98);
-    lv_obj_set_width(lv_obj_7, 12);
-    lv_obj_set_height(lv_obj_7, 12);
+    lv_obj_t * lv_obj_7 = lv_obj_create(lv_obj_0);
+    lv_obj_set_x(lv_obj_7, 314);
+    lv_obj_set_y(lv_obj_7, 52);
+    lv_obj_set_width(lv_obj_7, 158);
+    lv_obj_set_height(lv_obj_7, 208);
     lv_obj_set_flag(lv_obj_7, LV_OBJ_FLAG_SCROLLABLE, false);
-    lv_obj_add_style(lv_obj_7, &vector_dot_night, 0);
-    lv_obj_bind_style(lv_obj_7, &vector_dot_day, 0, &night_mode, 0);
-    
-    lv_obj_t * lv_obj_8 = lv_obj_create(lv_obj_0);
-    lv_obj_set_x(lv_obj_8, 314);
-    lv_obj_set_y(lv_obj_8, 52);
-    lv_obj_set_width(lv_obj_8, 158);
-    lv_obj_set_height(lv_obj_8, 208);
-    lv_obj_set_flag(lv_obj_8, LV_OBJ_FLAG_SCROLLABLE, false);
-    lv_obj_add_style(lv_obj_8, &panel_night, 0);
-    lv_obj_bind_style(lv_obj_8, &panel_day, 0, &night_mode, 0);
-    lv_obj_t * lv_label_5 = lv_label_create(lv_obj_8);
+    lv_obj_add_style(lv_obj_7, &panel_night, 0);
+    lv_obj_bind_style(lv_obj_7, &panel_day, 0, &night_mode, 0);
+    lv_obj_t * lv_label_5 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_5, 0);
     lv_obj_set_y(lv_label_5, 0);
     lv_label_set_text(lv_label_5, "REMAINING");
@@ -179,7 +179,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_5, &muted_night, 0);
     lv_obj_bind_style(lv_label_5, &muted_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_6 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_6 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_6, 0);
     lv_obj_set_y(lv_label_6, 24);
     lv_label_set_text(lv_label_6, "AZ");
@@ -187,7 +187,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_6, &muted_night, 0);
     lv_obj_bind_style(lv_label_6, &muted_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_7 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_7 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_7, 0);
     lv_obj_set_y(lv_label_7, 39);
     lv_obj_set_width(lv_label_7, 138);
@@ -197,7 +197,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_7, &value_night, 0);
     lv_obj_bind_style(lv_label_7, &value_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_8 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_8 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_8, 0);
     lv_obj_set_y(lv_label_8, 71);
     lv_label_set_text(lv_label_8, "ALT");
@@ -205,7 +205,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_8, &muted_night, 0);
     lv_obj_bind_style(lv_label_8, &muted_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_9 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_9 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_9, 0);
     lv_obj_set_y(lv_label_9, 86);
     lv_obj_set_width(lv_label_9, 138);
@@ -215,7 +215,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_9, &value_night, 0);
     lv_obj_bind_style(lv_label_9, &value_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_10 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_10 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_10, 0);
     lv_obj_set_y(lv_label_10, 126);
     lv_label_set_text(lv_label_10, "NOW");
@@ -223,7 +223,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_10, &muted_night, 0);
     lv_obj_bind_style(lv_label_10, &muted_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_11 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_11 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_11, 38);
     lv_obj_set_y(lv_label_11, 126);
     lv_obj_set_width(lv_label_11, 48);
@@ -231,7 +231,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_set_style_text_font(lv_label_11, font_small, 0);
     lv_obj_set_style_text_align(lv_label_11, LV_TEXT_ALIGN_RIGHT, 0);
     
-    lv_obj_t * lv_label_12 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_12 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_12, 90);
     lv_obj_set_y(lv_label_12, 126);
     lv_obj_set_width(lv_label_12, 48);
@@ -239,7 +239,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_set_style_text_font(lv_label_12, font_small, 0);
     lv_obj_set_style_text_align(lv_label_12, LV_TEXT_ALIGN_RIGHT, 0);
     
-    lv_obj_t * lv_label_13 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_13 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_13, 0);
     lv_obj_set_y(lv_label_13, 158);
     lv_label_set_text(lv_label_13, "TGT");
@@ -247,7 +247,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_add_style(lv_label_13, &muted_night, 0);
     lv_obj_bind_style(lv_label_13, &muted_day, 0, &night_mode, 0);
     
-    lv_obj_t * lv_label_14 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_14 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_14, 38);
     lv_obj_set_y(lv_label_14, 158);
     lv_obj_set_width(lv_label_14, 48);
@@ -255,7 +255,7 @@ lv_obj_t * guidance_create(void)
     lv_obj_set_style_text_font(lv_label_14, font_small, 0);
     lv_obj_set_style_text_align(lv_label_14, LV_TEXT_ALIGN_RIGHT, 0);
     
-    lv_obj_t * lv_label_15 = lv_label_create(lv_obj_8);
+    lv_obj_t * lv_label_15 = lv_label_create(lv_obj_7);
     lv_obj_set_x(lv_label_15, 90);
     lv_obj_set_y(lv_label_15, 158);
     lv_obj_set_width(lv_label_15, 48);
@@ -320,23 +320,23 @@ lv_obj_t * guidance_create(void)
     lv_label_set_text(lv_label_20, "DAY / NIGHT");
     lv_obj_set_align(lv_label_20, LV_ALIGN_CENTER);
     
-    lv_obj_t * lv_obj_9 = lv_obj_create(lv_obj_0);
-    lv_obj_set_x(lv_obj_9, 0);
-    lv_obj_set_y(lv_obj_9, 0);
-    lv_obj_set_width(lv_obj_9, lv_pct(100));
-    lv_obj_set_height(lv_obj_9, lv_pct(100));
-    lv_obj_set_flag(lv_obj_9, LV_OBJ_FLAG_CLICKABLE, false);
-    lv_obj_set_flag(lv_obj_9, LV_OBJ_FLAG_SCROLLABLE, false);
-    lv_obj_add_style(lv_obj_9, &brightness_80, 0);
-    lv_obj_bind_style(lv_obj_9, &brightness_10, 0, &brightness, 10);
-    lv_obj_bind_style(lv_obj_9, &brightness_20, 0, &brightness, 20);
-    lv_obj_bind_style(lv_obj_9, &brightness_30, 0, &brightness, 30);
-    lv_obj_bind_style(lv_obj_9, &brightness_40, 0, &brightness, 40);
-    lv_obj_bind_style(lv_obj_9, &brightness_50, 0, &brightness, 50);
-    lv_obj_bind_style(lv_obj_9, &brightness_60, 0, &brightness, 60);
-    lv_obj_bind_style(lv_obj_9, &brightness_70, 0, &brightness, 70);
-    lv_obj_bind_style(lv_obj_9, &brightness_90, 0, &brightness, 90);
-    lv_obj_bind_style(lv_obj_9, &brightness_100, 0, &brightness, 100);
+    lv_obj_t * lv_obj_8 = lv_obj_create(lv_obj_0);
+    lv_obj_set_x(lv_obj_8, 0);
+    lv_obj_set_y(lv_obj_8, 0);
+    lv_obj_set_width(lv_obj_8, lv_pct(100));
+    lv_obj_set_height(lv_obj_8, lv_pct(100));
+    lv_obj_set_flag(lv_obj_8, LV_OBJ_FLAG_CLICKABLE, false);
+    lv_obj_set_flag(lv_obj_8, LV_OBJ_FLAG_SCROLLABLE, false);
+    lv_obj_add_style(lv_obj_8, &brightness_80, 0);
+    lv_obj_bind_style(lv_obj_8, &brightness_10, 0, &brightness, 10);
+    lv_obj_bind_style(lv_obj_8, &brightness_20, 0, &brightness, 20);
+    lv_obj_bind_style(lv_obj_8, &brightness_30, 0, &brightness, 30);
+    lv_obj_bind_style(lv_obj_8, &brightness_40, 0, &brightness, 40);
+    lv_obj_bind_style(lv_obj_8, &brightness_50, 0, &brightness, 50);
+    lv_obj_bind_style(lv_obj_8, &brightness_60, 0, &brightness, 60);
+    lv_obj_bind_style(lv_obj_8, &brightness_70, 0, &brightness, 70);
+    lv_obj_bind_style(lv_obj_8, &brightness_90, 0, &brightness, 90);
+    lv_obj_bind_style(lv_obj_8, &brightness_100, 0, &brightness, 100);
 
     LV_TRACE_OBJ_CREATE("finished");
 

@@ -68,7 +68,7 @@ lv_style_t vector_night;
 lv_style_t vector_day;
 lv_style_t vector_dot_night;
 lv_style_t vector_dot_day;
-lv_style_t vector_pivot;
+lv_style_t vector_line_pivot;
 lv_style_t vector_angle_e;
 lv_style_t vector_angle_se;
 lv_style_t vector_angle_s;
@@ -77,6 +77,11 @@ lv_style_t vector_angle_w;
 lv_style_t vector_angle_nw;
 lv_style_t vector_angle_n;
 lv_style_t vector_angle_ne;
+lv_style_t vector_coarse;
+lv_style_t vector_fine;
+lv_style_t vector_aligned;
+lv_style_t state_hidden;
+lv_style_t state_visible;
 lv_style_t brightness_10;
 lv_style_t brightness_20;
 lv_style_t brightness_30;
@@ -100,8 +105,6 @@ lv_font_t * font_heading;
 extern lv_font_t font_heading_data;
 lv_font_t * font_value;
 extern lv_font_t font_value_data;
-lv_font_t * font_arrow;
-extern lv_font_t font_arrow_data;
 
 /*----------------
  * Images
@@ -123,6 +126,7 @@ lv_subject_t alt_direction;
 lv_subject_t az_error;
 lv_subject_t alt_error;
 lv_subject_t guide_sector;
+lv_subject_t guide_stage;
 lv_subject_t guide_status;
 lv_subject_t connection_status;
 
@@ -280,9 +284,9 @@ void telescope_ui_init_gen(const char * asset_path)
         lv_style_set_border_width(&vector_dot_day, 0);
         lv_style_set_radius(&vector_dot_day, 100);
 
-        lv_style_init(&vector_pivot);
-        lv_style_set_transform_pivot_x(&vector_pivot, 0);
-        lv_style_set_transform_pivot_y(&vector_pivot, 30);
+        lv_style_init(&vector_line_pivot);
+        lv_style_set_transform_pivot_x(&vector_line_pivot, 0);
+        lv_style_set_transform_pivot_y(&vector_line_pivot, 2);
 
         lv_style_init(&vector_angle_e);
         lv_style_set_transform_rotation(&vector_angle_e, 0);
@@ -307,6 +311,23 @@ void telescope_ui_init_gen(const char * asset_path)
 
         lv_style_init(&vector_angle_ne);
         lv_style_set_transform_rotation(&vector_angle_ne, 3150);
+
+        lv_style_init(&vector_coarse);
+        lv_style_set_transform_scale_x(&vector_coarse, 256);
+        lv_style_set_transform_scale_y(&vector_coarse, 256);
+
+        lv_style_init(&vector_fine);
+        lv_style_set_transform_scale_x(&vector_fine, 176);
+        lv_style_set_transform_scale_y(&vector_fine, 176);
+
+        lv_style_init(&vector_aligned);
+        lv_style_set_opa(&vector_aligned, (255 * 0 / 100));
+
+        lv_style_init(&state_hidden);
+        lv_style_set_opa(&state_hidden, (255 * 0 / 100));
+
+        lv_style_init(&state_visible);
+        lv_style_set_opa(&state_visible, (255 * 100 / 100));
 
         lv_style_init(&brightness_10);
         lv_style_set_bg_color(&brightness_10, BRIGHTNESS_MASK);
@@ -383,8 +404,6 @@ void telescope_ui_init_gen(const char * asset_path)
     font_heading = &font_heading_data;
     /* get font 'font_value' from a C array */
     font_value = &font_value_data;
-    /* get font 'font_arrow' from a C array */
-    font_arrow = &font_arrow_data;
 
 
     /*----------------
@@ -474,13 +493,16 @@ void telescope_ui_init_gen(const char * asset_path)
     lv_subject_init_int(&guide_sector, 7);
     lv_subject_set_min_value_int(&guide_sector, 0);
     lv_subject_set_max_value_int(&guide_sector, 7);
+    lv_subject_init_int(&guide_stage, 0);
+    lv_subject_set_min_value_int(&guide_stage, 0);
+    lv_subject_set_max_value_int(&guide_stage, 2);
     static char guide_status_buf[UI_SUBJECT_STRING_LENGTH];
     static char guide_status_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&guide_status,
                            guide_status_buf,
                            guide_status_prev_buf,
                            UI_SUBJECT_STRING_LENGTH,
-                           "GUIDING"
+                           "COARSE"
                           );
     static char connection_status_buf[UI_SUBJECT_STRING_LENGTH];
     static char connection_status_prev_buf[UI_SUBJECT_STRING_LENGTH];
@@ -503,7 +525,6 @@ void telescope_ui_init_gen(const char * asset_path)
     lv_xml_register_font(NULL, "font_body", font_body);
     lv_xml_register_font(NULL, "font_heading", font_heading);
     lv_xml_register_font(NULL, "font_value", font_value);
-    lv_xml_register_font(NULL, "font_arrow", font_arrow);
 
     /* Register subjects */
     lv_xml_register_subject(NULL, "night_mode", &night_mode);
@@ -518,6 +539,7 @@ void telescope_ui_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "az_error", &az_error);
     lv_xml_register_subject(NULL, "alt_error", &alt_error);
     lv_xml_register_subject(NULL, "guide_sector", &guide_sector);
+    lv_xml_register_subject(NULL, "guide_stage", &guide_stage);
     lv_xml_register_subject(NULL, "guide_status", &guide_status);
     lv_xml_register_subject(NULL, "connection_status", &connection_status);
 

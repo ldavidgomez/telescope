@@ -13,9 +13,11 @@ The labels use observable subjects from `globals.xml`, so the Raspberry Pi or ES
 
 The main screen combines azimuth and altitude guidance into one reticle. The `guide_sector` subject selects one of eight arrow directions in the XML preview (`0` east through `7` north-east). During firmware integration this can be upgraded to a continuous angle, while the numeric AZ and ALT errors remain visible for precision and diagnostics.
 
+The editor preview includes a lightweight telemetry demonstration in `telescope_ui.c`. It advances from `COARSE` to `FINE` and finally `ALIGNED`, updating the simulated coordinates, errors, arrow direction, and arrow scale every 700 ms. The demonstration is compiled only when `LV_EDITOR_PREVIEW` is defined and is therefore excluded from the device firmware.
+
 Because the desktop preview has no physical backlight, brightness is represented by a non-interactive black overlay with discrete opacity levels. On the FNK0104S, the same `brightness` subject will drive the display backlight instead.
 
-The bundled Montserrat font files come from LVGL's official open-project template and are used at five rasterized sizes. The 60 px variant is reserved for the two large direction indicators, while the 12 px variant keeps connection details compact. They are generated at 2 bits per pixel to keep the eventual firmware footprint modest.
+The bundled Montserrat font files come from LVGL's official open-project template and are used at four rasterized sizes. The 12 px variant keeps connection details compact. They are generated at 2 bits per pixel to keep the eventual firmware footprint modest.
 
 The empty `images`, `widgets`, and `components` directories are kept in Git because LVGL Editor expects or scans them even when the interface does not yet use those resource types.
 

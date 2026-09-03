@@ -36,11 +36,16 @@
 				<bind_style name="axis_day" subject="night_mode" ref_value="0" />
 			</lv_obj>
 
-			<!-- Arrow origin is fixed at the target reticle centre. -->
-			<lv_obj x="140" y="74" width="125" height="60" scrollable="false">
-				<style name="transparent" />
-				<style name="vector_pivot" />
+			<!-- A single needle starts at the centre and points towards the required
+			     movement. Rotated text is avoided because the web Preview duplicates it. -->
+			<lv_obj x="140" y="102" width="88" height="5" scrollable="false">
+				<style name="vector_night" />
+				<bind_style name="vector_day" subject="night_mode" ref_value="0" />
+				<style name="vector_line_pivot" />
 				<style name="vector_angle_ne" />
+				<style name="vector_coarse" />
+				<bind_style name="vector_fine" subject="guide_stage" ref_value="1" />
+				<bind_style name="vector_aligned" subject="guide_stage" ref_value="2" />
 				<bind_style name="vector_angle_e" subject="guide_sector" ref_value="0" />
 				<bind_style name="vector_angle_se" subject="guide_sector" ref_value="1" />
 				<bind_style name="vector_angle_s" subject="guide_sector" ref_value="2" />
@@ -48,20 +53,18 @@
 				<bind_style name="vector_angle_w" subject="guide_sector" ref_value="4" />
 				<bind_style name="vector_angle_nw" subject="guide_sector" ref_value="5" />
 				<bind_style name="vector_angle_n" subject="guide_sector" ref_value="6" />
-				<lv_obj x="0" y="28" width="88" height="5" scrollable="false">
-					<style name="vector_night" />
-					<bind_style name="vector_day" subject="night_mode" ref_value="0" />
-				</lv_obj>
-				<lv_label x="77" y="-2" text="&gt;" style_text_font="font_arrow">
-					<style name="accent_night" />
-					<bind_style name="accent_day" subject="night_mode" ref_value="0" />
-				</lv_label>
 			</lv_obj>
 
 			<lv_obj x="134" y="98" width="12" height="12" scrollable="false">
 				<style name="vector_dot_night" />
 				<bind_style name="vector_dot_day" subject="night_mode" ref_value="0" />
 			</lv_obj>
+			<lv_label x="80" y="92" width="120" text="ALIGNED" style_text_font="font_heading" style_text_align="center">
+				<style name="state_hidden" />
+				<style name="accent_night" />
+				<bind_style name="state_visible" subject="guide_stage" ref_value="2" />
+				<bind_style name="accent_day" subject="night_mode" ref_value="0" />
+			</lv_label>
 		</lv_obj>
 
 		<!-- Numeric deltas remain visible for precision and diagnostics. -->
