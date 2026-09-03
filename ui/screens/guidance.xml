@@ -3,79 +3,138 @@
 		<style name="screen_night" />
 		<bind_style name="screen_day" subject="night_mode" ref_value="0" />
 
-		<lv_label x="14" y="8" bind_text="target_name" style_text_font="font_heading" />
-		<lv_label x="374" y="10" bind_text="guide_status">
+		<lv_label x="10" y="7" width="330" bind_text="target_name" style_text_font="font_heading" long_mode="dots" />
+		<lv_label x="344" y="9" width="126" bind_text="guide_status" style_text_align="right">
 			<style name="accent_night" />
 			<bind_style name="accent_day" subject="night_mode" ref_value="0" />
 		</lv_label>
-
-		<lv_obj x="12" y="40" width="222" height="160" scrollable="false">
-			<style name="panel_night" />
-			<bind_style name="panel_day" subject="night_mode" ref_value="0" />
-			<lv_label x="0" y="0" text="CURRENT POSITION">
-				<style name="muted_night" />
-				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
-			</lv_label>
-			<lv_label x="0" y="38" text="AZ" style_text_font="font_heading" />
-			<lv_label x="52" y="31" bind_text="current_az" style_text_font="font_value" />
-			<lv_label x="0" y="99" text="ALT" style_text_font="font_heading" />
-			<lv_label x="52" y="92" bind_text="current_alt" style_text_font="font_value" />
-		</lv_obj>
-
-		<lv_obj x="246" y="40" width="222" height="160" scrollable="false">
-			<style name="panel_night" />
-			<bind_style name="panel_day" subject="night_mode" ref_value="0" />
-			<lv_label x="0" y="0" text="MOVE TELESCOPE">
-				<style name="muted_night" />
-				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
-			</lv_label>
-			<lv_label x="2" y="29" bind_text="az_direction" style_text_font="font_arrow">
-				<style name="accent_night" />
-				<bind_style name="accent_day" subject="night_mode" ref_value="0" />
-			</lv_label>
-			<lv_label x="50" y="32" text="AZ" style_text_font="font_heading" />
-			<lv_label x="90" y="27" bind_text="az_error" style_text_font="font_heading" />
-			<lv_label x="2" y="91" bind_text="alt_direction" style_text_font="font_arrow">
-				<style name="accent_night" />
-				<bind_style name="accent_day" subject="night_mode" ref_value="0" />
-			</lv_label>
-			<lv_label x="50" y="94" text="ALT" style_text_font="font_heading" />
-			<lv_label x="90" y="89" bind_text="alt_error" style_text_font="font_heading" />
-		</lv_obj>
-
-		<lv_label x="16" y="211" text="TARGET">
-			<style name="muted_night" />
-			<bind_style name="muted_day" subject="night_mode" ref_value="0" />
-		</lv_label>
-		<lv_label x="88" y="211" text="AZ" />
-		<lv_label x="112" y="211" bind_text="target_az" />
-		<lv_label x="192" y="211" text="ALT" />
-		<lv_label x="226" y="211" bind_text="target_alt" />
-		<lv_label x="16" y="238" bind_text="connection_status">
+		<lv_label x="10" y="32" width="460" bind_text="connection_status" style_text_font="font_small" long_mode="dots">
 			<style name="muted_night" />
 			<bind_style name="muted_day" subject="night_mode" ref_value="0" />
 		</lv_label>
 
-		<lv_button x="12" y="274" width="112" height="36">
+		<!-- One combined AZ/ALT direction vector. Its eight sectors are controlled
+		     by guide_sector; firmware can later replace this with a continuous angle. -->
+		<lv_obj x="8" y="52" width="300" height="208" scrollable="false">
+			<style name="panel_night" />
+			<bind_style name="panel_day" subject="night_mode" ref_value="0" />
+			<lv_label x="0" y="0" text="MOVE THIS WAY" style_text_font="font_small">
+				<style name="muted_night" />
+				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+
+			<lv_obj x="60" y="24" width="160" height="160" scrollable="false">
+				<style name="reticle_night" />
+				<bind_style name="reticle_day" subject="night_mode" ref_value="0" />
+			</lv_obj>
+			<lv_obj x="60" y="103" width="160" height="2" scrollable="false">
+				<style name="axis_night" />
+				<bind_style name="axis_day" subject="night_mode" ref_value="0" />
+			</lv_obj>
+			<lv_obj x="139" y="24" width="2" height="160" scrollable="false">
+				<style name="axis_night" />
+				<bind_style name="axis_day" subject="night_mode" ref_value="0" />
+			</lv_obj>
+
+			<!-- Arrow origin is fixed at the target reticle centre. -->
+			<lv_obj x="140" y="74" width="125" height="60" scrollable="false">
+				<style name="transparent" />
+				<style name="vector_pivot" />
+				<style name="vector_angle_ne" />
+				<bind_style name="vector_angle_e" subject="guide_sector" ref_value="0" />
+				<bind_style name="vector_angle_se" subject="guide_sector" ref_value="1" />
+				<bind_style name="vector_angle_s" subject="guide_sector" ref_value="2" />
+				<bind_style name="vector_angle_sw" subject="guide_sector" ref_value="3" />
+				<bind_style name="vector_angle_w" subject="guide_sector" ref_value="4" />
+				<bind_style name="vector_angle_nw" subject="guide_sector" ref_value="5" />
+				<bind_style name="vector_angle_n" subject="guide_sector" ref_value="6" />
+				<lv_obj x="0" y="28" width="88" height="5" scrollable="false">
+					<style name="vector_night" />
+					<bind_style name="vector_day" subject="night_mode" ref_value="0" />
+				</lv_obj>
+				<lv_label x="77" y="-2" text="&gt;" style_text_font="font_arrow">
+					<style name="accent_night" />
+					<bind_style name="accent_day" subject="night_mode" ref_value="0" />
+				</lv_label>
+			</lv_obj>
+
+			<lv_obj x="134" y="98" width="12" height="12" scrollable="false">
+				<style name="vector_dot_night" />
+				<bind_style name="vector_dot_day" subject="night_mode" ref_value="0" />
+			</lv_obj>
+		</lv_obj>
+
+		<!-- Numeric deltas remain visible for precision and diagnostics. -->
+		<lv_obj x="314" y="52" width="158" height="208" scrollable="false">
+			<style name="panel_night" />
+			<bind_style name="panel_day" subject="night_mode" ref_value="0" />
+			<lv_label x="0" y="0" text="REMAINING" style_text_font="font_small">
+				<style name="muted_night" />
+				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="0" y="24" text="AZ" style_text_font="font_small">
+				<style name="muted_night" />
+				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="0" y="39" width="138" bind_text="az_error" style_text_font="font_heading" style_text_align="right">
+				<style name="value_night" />
+				<bind_style name="value_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="0" y="71" text="ALT" style_text_font="font_small">
+				<style name="muted_night" />
+				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="0" y="86" width="138" bind_text="alt_error" style_text_font="font_heading" style_text_align="right">
+				<style name="value_night" />
+				<bind_style name="value_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="0" y="126" text="NOW" style_text_font="font_small">
+				<style name="muted_night" />
+				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="38" y="126" width="48" bind_text="current_az" style_text_font="font_small" style_text_align="right" />
+			<lv_label x="90" y="126" width="48" bind_text="current_alt" style_text_font="font_small" style_text_align="right" />
+			<lv_label x="0" y="158" text="TGT" style_text_font="font_small">
+				<style name="muted_night" />
+				<bind_style name="muted_day" subject="night_mode" ref_value="0" />
+			</lv_label>
+			<lv_label x="38" y="158" width="48" bind_text="target_az" style_text_font="font_small" style_text_align="right" />
+			<lv_label x="90" y="158" width="48" bind_text="target_alt" style_text_font="font_small" style_text_align="right" />
+		</lv_obj>
+
+		<lv_button x="8" y="264" width="52" height="48">
 			<style name="button_night" />
 			<bind_style name="button_day" subject="night_mode" ref_value="0" />
-			<subject_increment_event trigger="clicked" subject="brightness" step="-10" min_value="5" max_value="100" />
-			<lv_label align="center" text="BRIGHT -" />
+			<subject_increment_event trigger="clicked" subject="brightness" step="-10" min_value="10" max_value="100" />
+			<lv_label text="-" style_text_font="font_heading" align="center" />
 		</lv_button>
-
-		<lv_button x="134" y="274" width="212" height="36">
+		<lv_label x="64" y="280" width="48" bind_text="brightness" style_text_align="right" />
+		<lv_label x="114" y="280" text="%" />
+		<lv_button x="135" y="264" width="52" height="48">
+			<style name="button_night" />
+			<bind_style name="button_day" subject="night_mode" ref_value="0" />
+			<subject_increment_event trigger="clicked" subject="brightness" step="10" min_value="10" max_value="100" />
+			<lv_label text="+" style_text_font="font_heading" align="center" />
+		</lv_button>
+		<lv_button x="318" y="264" width="154" height="48">
 			<style name="button_night" />
 			<bind_style name="button_day" subject="night_mode" ref_value="0" />
 			<subject_increment_event trigger="clicked" subject="night_mode" step="1" min_value="0" max_value="1" rollover="true" />
-			<lv_label x="16" align="left_mid" text="DAY / NIGHT" />
-			<lv_label x="154" align="right_mid" bind_text="brightness" bind_text-fmt="%d%%" />
+			<lv_label text="DAY / NIGHT" align="center" />
 		</lv_button>
 
-		<lv_button x="356" y="274" width="112" height="36">
-			<style name="button_night" />
-			<bind_style name="button_day" subject="night_mode" ref_value="0" />
-			<subject_increment_event trigger="clicked" subject="brightness" step="10" min_value="5" max_value="100" />
-			<lv_label align="center" text="BRIGHT +" />
-		</lv_button>
+		<!-- Preview only: emulate the physical backlight with a black mask. -->
+		<lv_obj x="0" y="0" width="100%" height="100%" clickable="false" scrollable="false">
+			<style name="brightness_80" />
+			<bind_style name="brightness_10" subject="brightness" ref_value="10" />
+			<bind_style name="brightness_20" subject="brightness" ref_value="20" />
+			<bind_style name="brightness_30" subject="brightness" ref_value="30" />
+			<bind_style name="brightness_40" subject="brightness" ref_value="40" />
+			<bind_style name="brightness_50" subject="brightness" ref_value="50" />
+			<bind_style name="brightness_60" subject="brightness" ref_value="60" />
+			<bind_style name="brightness_70" subject="brightness" ref_value="70" />
+			<bind_style name="brightness_90" subject="brightness" ref_value="90" />
+			<bind_style name="brightness_100" subject="brightness" ref_value="100" />
+		</lv_obj>
 	</view>
 </screen>

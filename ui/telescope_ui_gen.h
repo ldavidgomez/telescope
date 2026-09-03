@@ -51,6 +51,8 @@ extern "C" {
 
 #define DAY_ACCENT lv_color_hex(0x4DD5FF)
 
+#define BRIGHTNESS_MASK lv_color_hex(0x000000)
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -77,12 +79,46 @@ extern lv_style_t muted_night;
 extern lv_style_t muted_day;
 extern lv_style_t accent_night;
 extern lv_style_t accent_day;
+extern lv_style_t value_night;
+extern lv_style_t value_day;
 extern lv_style_t button_night;
 extern lv_style_t button_day;
+extern lv_style_t guide_night;
+extern lv_style_t guide_day;
+extern lv_style_t transparent;
+extern lv_style_t reticle_night;
+extern lv_style_t reticle_day;
+extern lv_style_t axis_night;
+extern lv_style_t axis_day;
+extern lv_style_t vector_night;
+extern lv_style_t vector_day;
+extern lv_style_t vector_dot_night;
+extern lv_style_t vector_dot_day;
+extern lv_style_t vector_pivot;
+extern lv_style_t vector_angle_e;
+extern lv_style_t vector_angle_se;
+extern lv_style_t vector_angle_s;
+extern lv_style_t vector_angle_sw;
+extern lv_style_t vector_angle_w;
+extern lv_style_t vector_angle_nw;
+extern lv_style_t vector_angle_n;
+extern lv_style_t vector_angle_ne;
+extern lv_style_t brightness_10;
+extern lv_style_t brightness_20;
+extern lv_style_t brightness_30;
+extern lv_style_t brightness_40;
+extern lv_style_t brightness_50;
+extern lv_style_t brightness_60;
+extern lv_style_t brightness_70;
+extern lv_style_t brightness_80;
+extern lv_style_t brightness_90;
+extern lv_style_t brightness_100;
 
 /*----------------
  * Fonts
  *----------------*/
+
+extern lv_font_t * font_small;
 
 extern lv_font_t * font_body;
 
@@ -111,6 +147,7 @@ extern lv_subject_t az_direction;
 extern lv_subject_t alt_direction;
 extern lv_subject_t az_error;
 extern lv_subject_t alt_error;
+extern lv_subject_t guide_sector;
 extern lv_subject_t guide_status;
 extern lv_subject_t connection_status;
 

@@ -45,9 +45,24 @@ Model B+ v1.2 and a OnePlus Nord 2T running Android 14:
   failures among the five most recent probes. It does not restart the telescope
   or Bluetooth services.
 
-## Pending power bank test
+## Power bank runtime test
 
-- Confirm that the 20,000 mAh, 22.5 W power bank provides 5 V at 2.5 A or
+- The first continuous test ended at 08:59 CEST on 2026-09-03 after the
+  Raspberry Pi had been left running overnight. The exact start time was not
+  recorded, so a precise runtime should not be inferred from this test.
+- The power bank used for this test was rated at 10,000 mAh, not the planned
+  20,000 mAh unit.
+- The test comfortably exceeded the intended 4-6 hour observing session.
+- No undervoltage warnings or peripheral disconnections were observed before
+  the power bank was exhausted; the last reported value was
+  `throttled=0x0`.
+- Exhausting the power bank removes power without a controlled Raspberry Pi
+  shutdown. Future field use should stop with a safety margin to reduce the
+  risk of filesystem corruption.
+
+## Remaining power bank checks
+
+- Confirm that the planned 20,000 mAh, 22.5 W power bank provides 5 V at 2.5 A or
   more on the selected port; 5 V at 3 A is preferable.
 - Use a short, good-quality micro-USB power cable.
 - Test with the LCD, IMU, Wi-Fi adapter, and Bluetooth adapter connected.

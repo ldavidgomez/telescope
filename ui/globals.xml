@@ -15,13 +15,15 @@
 		<color name="day_text" value="0xEAF7FF" />
 		<color name="day_muted" value="0x91ADBC" />
 		<color name="day_accent" value="0x4DD5FF" />
+		<color name="brightness_mask" value="0x000000" />
 	</consts>
 
 	<fonts>
+		<bin name="font_small" src_path="fonts/Montserrat-Regular.ttf" size="12" bpp="2" range="0x20-0x7F" as_file="false" />
 		<bin name="font_body" src_path="fonts/Montserrat-Regular.ttf" size="16" bpp="2" range="0x20-0x7F" as_file="false" />
 		<bin name="font_heading" src_path="fonts/Montserrat-SemiBold.ttf" size="20" bpp="2" range="0x20-0x7F" as_file="false" />
 		<bin name="font_value" src_path="fonts/Montserrat-SemiBold.ttf" size="28" bpp="2" range="0x20-0x7F" as_file="false" />
-		<bin name="font_arrow" src_path="fonts/Montserrat-SemiBold.ttf" size="36" bpp="2" range="0x20-0x7F" as_file="false" />
+		<bin name="font_arrow" src_path="fonts/Montserrat-SemiBold.ttf" size="60" bpp="2" range="0x20-0x7F" as_file="false" />
 	</fonts>
 
 	<styles>
@@ -35,14 +37,49 @@
 		<style name="muted_day" text_color="#day_muted" />
 		<style name="accent_night" text_color="#night_accent" />
 		<style name="accent_day" text_color="#day_accent" />
+		<style name="value_night" text_color="#night_text" />
+		<style name="value_day" text_color="#day_text" />
 
 		<style name="button_night" bg_color="#night_panel" bg_opa="100%" border_color="#night_border" border_width="1" radius="8" text_color="#night_text" />
 		<style name="button_day" bg_color="#day_panel" bg_opa="100%" border_color="#day_border" border_width="1" radius="8" text_color="#day_text" />
+		<style name="guide_night" bg_color="#night_panel" bg_opa="100%" border_color="#night_accent" border_width="1" radius="10" pad_all="8" />
+		<style name="guide_day" bg_color="#day_panel" bg_opa="100%" border_color="#day_accent" border_width="1" radius="10" pad_all="8" />
+		<style name="transparent" bg_opa="0%" border_width="0" pad_all="0" />
+		<style name="reticle_night" bg_opa="0%" border_color="#night_border" border_width="2" radius="100" />
+		<style name="reticle_day" bg_opa="0%" border_color="#day_border" border_width="2" radius="100" />
+		<style name="axis_night" bg_color="#night_border" bg_opa="100%" border_width="0" radius="1" />
+		<style name="axis_day" bg_color="#day_border" bg_opa="100%" border_width="0" radius="1" />
+		<style name="vector_night" bg_color="#night_accent" bg_opa="100%" border_width="0" radius="3" text_color="#night_accent" />
+		<style name="vector_day" bg_color="#day_accent" bg_opa="100%" border_width="0" radius="3" text_color="#day_accent" />
+		<style name="vector_dot_night" bg_color="#night_accent" bg_opa="100%" border_width="0" radius="100" />
+		<style name="vector_dot_day" bg_color="#day_accent" bg_opa="100%" border_width="0" radius="100" />
+		<style name="vector_pivot" transform_pivot_x="0" transform_pivot_y="30" />
+		<style name="vector_angle_e" transform_rotation="0" />
+		<style name="vector_angle_se" transform_rotation="450" />
+		<style name="vector_angle_s" transform_rotation="900" />
+		<style name="vector_angle_sw" transform_rotation="1350" />
+		<style name="vector_angle_w" transform_rotation="1800" />
+		<style name="vector_angle_nw" transform_rotation="2250" />
+		<style name="vector_angle_n" transform_rotation="2700" />
+		<style name="vector_angle_ne" transform_rotation="3150" />
+
+		<!-- The desktop preview cannot change a physical backlight. These styles
+		     simulate brightness with a non-interactive black overlay. -->
+		<style name="brightness_10" bg_color="#brightness_mask" bg_opa="80%" border_width="0" radius="0" />
+		<style name="brightness_20" bg_color="#brightness_mask" bg_opa="68%" border_width="0" radius="0" />
+		<style name="brightness_30" bg_color="#brightness_mask" bg_opa="56%" border_width="0" radius="0" />
+		<style name="brightness_40" bg_color="#brightness_mask" bg_opa="45%" border_width="0" radius="0" />
+		<style name="brightness_50" bg_color="#brightness_mask" bg_opa="35%" border_width="0" radius="0" />
+		<style name="brightness_60" bg_color="#brightness_mask" bg_opa="26%" border_width="0" radius="0" />
+		<style name="brightness_70" bg_color="#brightness_mask" bg_opa="18%" border_width="0" radius="0" />
+		<style name="brightness_80" bg_color="#brightness_mask" bg_opa="11%" border_width="0" radius="0" />
+		<style name="brightness_90" bg_color="#brightness_mask" bg_opa="5%" border_width="0" radius="0" />
+		<style name="brightness_100" bg_color="#brightness_mask" bg_opa="0%" border_width="0" radius="0" />
 	</styles>
 
 	<subjects>
 		<int name="night_mode" value="1" min_value="0" max_value="1" help="0 = day, 1 = night" />
-		<int name="brightness" value="35" min_value="5" max_value="100" />
+		<int name="brightness" value="80" min_value="10" max_value="100" />
 		<string name="target_name" value="ALDEBARAN" />
 		<string name="current_az" value="052.0" />
 		<string name="current_alt" value="+18.0" />
@@ -52,6 +89,7 @@
 		<string name="alt_direction" value="^" />
 		<string name="az_error" value="+15.4 deg" />
 		<string name="alt_error" value="+13.8 deg" />
+		<int name="guide_sector" value="7" min_value="0" max_value="7" help="0 E, 1 SE, 2 S, 3 SW, 4 W, 5 NW, 6 N, 7 NE" />
 		<string name="guide_status" value="GUIDING" />
 		<string name="connection_status" value="STELLARIUM  OK   IMU  OK   PI  OK" />
 	</subjects>

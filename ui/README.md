@@ -11,9 +11,13 @@ This directory is the editable source for the future Freenove FNK0104S user inte
 
 The labels use observable subjects from `globals.xml`, so the Raspberry Pi or ESP32 code can update values without rebuilding the visual hierarchy. The buttons already model brightness changes and day/night switching inside the preview.
 
-The bundled Montserrat font files come from LVGL's official open-project template and are used at four rasterized sizes. They are generated at 2 bits per pixel to keep the eventual firmware footprint modest.
+The main screen combines azimuth and altitude guidance into one reticle. The `guide_sector` subject selects one of eight arrow directions in the XML preview (`0` east through `7` north-east). During firmware integration this can be upgraded to a continuous angle, while the numeric AZ and ALT errors remain visible for precision and diagnostics.
 
-The empty `images` directory is kept in Git because LVGL Editor mounts it during resource conversion even when the interface does not yet use images.
+Because the desktop preview has no physical backlight, brightness is represented by a non-interactive black overlay with discrete opacity levels. On the FNK0104S, the same `brightness` subject will drive the display backlight instead.
+
+The bundled Montserrat font files come from LVGL's official open-project template and are used at five rasterized sizes. The 60 px variant is reserved for the two large direction indicators, while the 12 px variant keeps connection details compact. They are generated at 2 bits per pixel to keep the eventual firmware footprint modest.
+
+The empty `images`, `widgets`, and `components` directories are kept in Git because LVGL Editor expects or scans them even when the interface does not yet use those resource types.
 
 Preview binaries, build directories, editor caches, and the local project file are ignored. XML sources, exported C files, converted font data, and `file_list_gen.cmake` are committed so the firmware remains buildable and reviewable without regenerating the interface first.
 
